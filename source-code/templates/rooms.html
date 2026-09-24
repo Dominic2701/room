@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% block title %}Rooms{% endblock %}
+{% block content %}
+<section class="results-page">
+  <div class="wrap results-promo-row">
+    <article class="promo-tile promo-flash"><strong>◷ FLASH<br />DEALS</strong><span>Offers ending soon →</span></article>
+    <article class="promo-tile promo-budget"><strong>Budget<br />rooms</strong><span>Great value →</span></article>
+    <article class="promo-tile promo-price"><strong>Under<br />INR 999</strong><span>Smart stays →</span></article>
+    <article class="promo-tile promo-exclusive"><strong>Exclusive<br />deals</strong><span>View offers →</span></article>
+  </div>
+
+  <div class="wrap results-layout">
+    <aside class="results-sidebar">
+      <div class="easy-filter">
+        <strong>✨ Easy filter</strong>
+        <span><b>Smart search</b> for your stay</span>
+        <input type="search" placeholder="Try &quot;hotels with WiFi&quot;" />
+      </div>
+
+      <div class="filter-panel">
+        <h2>Filters</h2>
+        <form method="get">
+          <label>Room type{{ form.room_type }}</label>
+          <label>Minimum price{{ form.min_price }}</label>
+          <label>Maximum price{{ form.max_price }}</label>
+          <label>Guests{{ form.capacity }}</label>
+          <div class="filter-dates">
+            <label>Check-in{{ form.check_in }}</label>
+            <label>Check-out{{ form.check_out }}</label>
+          </div>
+          <button class="button button-full" type="submit">Apply filters</button>
+          <a class="clear-link" href="{% url 'room_list' %}">Clear all</a>
+        </form>
+      </div>
+
+      <div class="filter-links">
+        <button type="button">Price per night <span>⌄</span></button>
+        <button type="button">Customer rating <span>⌄</span></button>
+        <button type="button">Amenities <span>⌄</span></button>
+        <button type="button">Room policies <span>⌄</span></button>
+      </div>
+    </aside>
+
+    <main class="results-content">
+      <div class="results-count-row">
+        <strong>{{ rooms|length }} rooms found</strong>
+        <div class="sort-links"><span>Sort by:</span> <b>Popularity ↓</b> <span>Ratings</span> <span>Price</span></div>
+      </div>
+
+      <div class="location-banner">
+        <div><strong>Rooms near you</strong><span>See comfortable stays available for your dates.</span></div>
+        <button type="button">⌾ Use precise location</button>
+      </div>
+
+      <h1 class="results-heading">Showing available rooms</h1>
+
+      <div class="property-list">
+        {% for room in rooms %}
+          <article class="property-card">
+            <div class="property-image property-image-{{ forloop.counter }}">
+              <span class="property-rating">★ 4.{{ forloop.counter }} &nbsp; {{ room.capacity }} guests</span>
+            </div>
+            <div class="property-info">
+              <div class="property-topline">{{ room.get_room_type_display }} · Floor {{ room.floor }}</div>
+              <h2>{{ room.get_room_type_display }} Room {{ room.room_number }}</h2>
+              <p class="property-meta">{{ room.amenity_list|slice:':3'|join:' · ' }}</p>
+              <div class="property-tags"><span>Available now</span><span>{{ room.capacity }} guests</span></div>
+            </div>
+            <div class="property-price">
+              <span class="deal-label">Great value</span>
+              <del>INR {{ room.price_per_night|add:1000|floatformat:0 }}</del>
+              <strong>INR {{ room.price_per_night|floatformat:0 }}</strong>
+              <small>Per night</small>
+              <a class="select-room-button" href="{% url 'room_detail' room.pk %}">Select room</a>
+            </div>
+          </article>
+        {% empty %}
+          <div class="empty-state"><h3>No rooms match your search.</h3><p>Try changing the dates or removing a filter.</p></div>
+        {% endfor %}
+      </div>
+    </main>
+  </div>
+</section>
+{% endblock %}

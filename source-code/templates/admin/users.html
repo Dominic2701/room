@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block title %}Manage users{% endblock %}
+{% block content %}
+<section class="wrap admin-header">
+  <div>
+    <p class="eyebrow">Operations / people</p>
+    <h1>Registered <em>guests.</em></h1>
+  </div>
+</section>
+<section class="wrap table-section">
+  <div class="booking-table">
+    <div class="booking-row booking-head">
+      <span>User</span><span>Email</span><span>Phone</span><span>Joined</span
+      ><span>Role</span>
+    </div>
+    {% for item in users %}
+    <div class="booking-row">
+      <span
+        ><strong>{{ item.get_full_name|default:item.username }}</strong
+        ><small>@{{ item.username }}</small></span
+      ><span>{{ item.email|default:'—' }}</span
+      ><span>{{ item.profile.phone|default:'—' }}</span
+      ><span>{{ item.date_joined|date:'d M Y' }}</span
+      ><span>{% if item.is_staff %}Admin{% else %}Customer{% endif %}</span>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

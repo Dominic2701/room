@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block title %}Payments{% endblock %}
+{% block content %}
+<section class="wrap admin-header">
+  <div>
+    <p class="eyebrow">Operations / payments</p>
+    <h1>Payment <em>ledger.</em></h1>
+  </div>
+</section>
+<section class="wrap table-section">
+  <div class="booking-table">
+    <div class="booking-row booking-head">
+      <span>Payment</span><span>Booking</span><span>Guest</span
+      ><span>Amount</span><span>Method</span><span>Status</span>
+    </div>
+    {% for payment in payments %}
+    <div class="booking-row">
+      <span
+        ><strong>{{ payment.payment_id }}</strong
+        ><small>{{ payment.payment_date|date:'d M Y' }}</small></span
+      ><span>{{ payment.booking.booking_id }}</span
+      ><span
+        >{{
+        payment.booking.user.get_full_name|default:payment.booking.user.username
+        }}</span
+      ><span>INR {{ payment.amount|floatformat:0 }}</span
+      ><span>{{ payment.get_payment_method_display }}</span
+      ><span class="status status-{{ payment.payment_status|lower }}"
+        >{{ payment.get_payment_status_display }}</span
+      >
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

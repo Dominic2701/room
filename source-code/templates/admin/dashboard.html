@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% block title %}Admin dashboard{% endblock %}
+{% block content %}
+<section class="wrap admin-header">
+  <div>
+    <p class="eyebrow">Operations</p>
+    <h1>Good morning, <em>admin.</em></h1>
+  </div>
+  <a class="button button-small" href="{% url 'admin_room_add' %}"
+    >Add a room <span>+</span></a
+  >
+</section>
+<section class="wrap stats-grid">
+  <div class="stat"><span>Users</span><strong>{{ user_count }}</strong></div>
+  <div class="stat"><span>Rooms</span><strong>{{ room_count }}</strong></div>
+  <div class="stat">
+    <span>Available</span><strong>{{ available_rooms }}</strong>
+  </div>
+  <div class="stat">
+    <span>Bookings</span><strong>{{ booking_count }}</strong>
+  </div>
+  <div class="stat">
+    <span>Pending</span><strong>{{ pending_count }}</strong>
+  </div>
+  <div class="stat">
+    <span>Revenue</span><strong>INR {{ revenue|floatformat:0 }}</strong>
+  </div>
+</section>
+<section class="wrap admin-grid">
+  <div class="admin-card">
+    <div class="card-heading">
+      <h2>Recent bookings</h2>
+      <a href="{% url 'admin_bookings' %}">View all →</a>
+    </div>
+    {% for booking in recent_bookings %}
+    <div class="mini-row">
+      <span
+        ><strong>{{ booking.booking_id }}</strong
+        ><small
+          >{{ booking.user.get_full_name|default:booking.user.username }}</small
+        ></span
+      ><span>Room {{ booking.room.room_number }}</span
+      ><span class="status status-{{ booking.booking_status|lower }}"
+        >{{ booking.get_booking_status_display }}</span
+      >
+    </div>
+    {% empty %}
+    <p class="empty-state">No bookings yet.</p>
+    {% endfor %}
+  </div>
+  <div class="admin-card quick-links">
+    <h2>Manage</h2>
+    <a href="{% url 'admin_rooms' %}">Rooms <span>→</span></a
+    ><a href="{% url 'admin_bookings' %}">Bookings <span>→</span></a
+    ><a href="{% url 'admin_users' %}">Users <span>→</span></a
+    ><a href="{% url 'admin_payments' %}">Payments <span>→</span></a
+    ><a href="/django-admin/">Django admin <span>↗</span></a>
+  </div>
+</section>
+{% endblock %}

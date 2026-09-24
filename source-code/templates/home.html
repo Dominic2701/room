@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+{% block title %}Find your next stay{% endblock %}
+{% block content %}
+  <section class="reference-hero">
+    <div class="wrap reference-hero-content">
+      <h1>WELCOME TO SHRINE BASILICAA</h1>
+      <p class="hero-location">⌖ &nbsp; 2400+ Rooms Available</p>
+    </div>
+  </section>
+
+  <section class="reference-search-wrap">
+    <div class="wrap reference-search">
+      <div class="location-field">
+        <span class="search-icon">⌕</span>
+        <span>
+          <small>City, area or hotel name</small>
+          <strong>Choose your destination</strong>
+        </span>
+      </div>
+      <form class="reference-search-form" action="{% url 'room_list' %}" method="get">
+        <label>
+          <small>Check-in</small>
+          <input type="date" name="check_in" required />
+        </label>
+        <label>
+          <small>Check-out</small>
+          <input type="date" name="check_out" required />
+        </label>
+        <label>
+          <small>No. of rooms & guests</small>
+          <input type="number" name="capacity" min="1" placeholder="1 room · 2 guests" />
+        </label>
+        <button class="reference-search-button" type="submit">Search rooms</button>
+      </form>
+    </div>
+  </section>
+
+  <section class="deal-section">
+    <div class="wrap section-title-row">
+      <h2><span class="deal-burst">◷</span> Flash deals</h2>
+      <p>Offers end soon</p>
+    </div>
+    <div class="wrap deal-grid">
+      {% for room in featured_rooms %}
+        <article class="deal-card">
+          <div class="deal-image">
+            <span class="deal-rating">★ 4.{{ forloop.counter }} · {{ room.capacity }} guests</span>
+          </div>
+          <div class="deal-content">
+            <span>Hotel · Staywise</span>
+            <h3>{{ room.get_room_type_display }} Room {{ room.room_number }}</h3>
+            <p>{{ room.amenity_list|slice:':2'|join:' · ' }}</p>
+            <strong>INR {{ room.price_per_night|floatformat:0 }} <small>per night</small></strong>
+          </div>
+        </article>
+      {% empty %}
+        <p class="empty-state">Deals are being prepared.</p>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="wrap collection-section">
+    <div class="section-title-row">
+      <h2>The Budget Collection</h2>
+      <a href="{% url 'room_list' %}">View all →</a>
+    </div>
+    <div class="budget-grid">
+      {% for room in featured_rooms %}
+        <a class="budget-card" href="{% url 'room_detail' room.pk %}">
+          <div class="budget-image">
+            <span>Under<br /><strong>INR {{ room.price_per_night|floatformat:0 }}</strong></span>
+          </div>
+          <h3>{{ room.get_room_type_display }} stays</h3>
+          <p>Comfortable rooms for smart travellers</p>
+        </a>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="wrap value-section">
+    <div class="section-title-row">
+      <div>
+        <h2>Value Stays</h2>
+        <p>For travellers who love to save</p>
+      </div>
+    </div>
+    <div class="value-grid">
+      <a class="value-card value-hotel" href="{% url 'room_list' %}">
+        <strong>Hotels</strong>
+        <span>Affordable & comfortable rooms</span>
+        <b>Up to 35% off</b>
+      </a>
+      <a class="value-card value-hostel" href="{% url 'room_list' %}">
+        <strong>Hostels</strong>
+        <span>Happy deals on shared rooms</span>
+        <b>Up to 45% off</b>
+      </a>
+      <a class="value-card value-homestay" href="{% url 'room_list' %}">
+        <strong>Homestays</strong>
+        <span>Perfect for group bookings</span>
+        <b>Up to 40% off</b>
+      </a>
+    </div>
+  </section>
+{% endblock %}

@@ -1,0 +1,36 @@
+<article class="room-card">
+  <div class="room-image
+    {% if room.room_type == 'SUITE' %}image-suite{% endif %}
+    {% if room.room_type == 'DELUXE' %}image-deluxe{% endif %}
+    {% if room.room_type == 'FAMILY' %}image-family{% endif %}">
+    <span class="room-type">{{ room.get_room_type_display }}</span>
+    <span class="room-number">{{ room.room_number }}</span>
+  </div>
+
+  <div class="room-card-body">
+    <div>
+      <h3>{{ room.get_room_type_display }} room</h3>
+      <p>Room {{ room.room_number }} · {{ room.capacity }} guests · Floor {{ room.floor }}</p>
+    </div>
+    <strong class="price">
+      INR {{ room.price_per_night|floatformat:0 }}
+      <small>/ night</small>
+    </strong>
+  </div>
+
+  <div class="room-card-foot">
+    <span class="room-amenities">
+      {% for amenity in room.amenity_list|slice:':3' %}
+        {{ amenity }}
+        {% if not forloop.last %} · {% endif %}
+      {% endfor %}
+    </span>
+    <a
+      class="button card-button"
+      href="{% url 'room_detail' room.pk %}"
+      aria-label="View room {{ room.room_number }}"
+    >
+      View details <span>→</span>
+    </a>
+  </div>
+</article>

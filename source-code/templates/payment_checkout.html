@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block title %}Complete payment{% endblock %}
+{% block content %}
+<section class="wrap confirmation">
+  <div class="confirmation-mark">₹</div>
+  <p class="eyebrow">Payment required · {{ booking.booking_id }}</p>
+  <h1>Finish payment to<br /><em>confirm your stay.</em></h1>
+  <p class="confirmation-lede">
+    Your room is held as pending until the payment is completed.
+  </p>
+  <div class="booking-receipt">
+    <div>
+      <span>Room</span
+      ><strong
+        >{{ booking.room.room_number }} · {{ booking.room.get_room_type_display
+        }}</strong
+      >
+    </div>
+    <div>
+      <span>Payment method</span
+      ><strong>{{ payment.get_payment_method_display }}</strong>
+    </div>
+    <div>
+      <span>Amount</span><strong>INR {{ payment.amount|floatformat:0 }}</strong>
+    </div>
+    <div>
+      <span>Booking status</span
+      ><strong class="status status-pending">Payment pending</strong>
+    </div>
+  </div>
+  <div class="action-row">
+    {% if payment_app_url %}<a class="button" href="{{ payment_app_url }}"
+      >Continue to {{ payment.get_payment_method_display }} <span>↗</span></a
+    >{% else %}<span class="button"
+      >Continue with {{ payment.get_payment_method_display }}
+      <span>→</span></span
+    >{% endif %}
+  </div>
+  <p class="payment-note">
+    Complete payment in the selected application. The booking will be confirmed
+    by the payment provider callback.
+  </p>
+</section>
+{% endblock %}

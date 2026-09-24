@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+
+{% block title %}
+  Room {{ room.room_number }}
+{% endblock %}
+
+{% block content %}
+  <section class="wrap detail-grid">
+    <div class="detail-image
+      {% if room.room_type == 'SUITE' %}image-suite{% endif %}
+      {% if room.room_type == 'DELUXE' %}image-deluxe{% endif %}">
+      <span class="room-type">{{ room.get_room_type_display }}</span>
+      <span class="detail-room-no">{{ room.room_number }}</span>
+    </div>
+
+    <div class="detail-copy">
+      <p class="eyebrow">
+        Room {{ room.room_number }} · Floor {{ room.floor }}
+      </p>
+      <h1>
+        {{ room.get_room_type_display }}<br />
+        <em>with intention.</em>
+      </h1>
+      <p class="detail-description">{{ room.description }}</p>
+
+      <div class="detail-price">
+        <strong>INR {{ room.price_per_night|floatformat:0 }}</strong>
+        <span>per night · up to {{ room.capacity }} guests</span>
+      </div>
+
+      <div class="amenities">
+        {% for amenity in room.amenity_list %}
+          <span>{{ amenity }}</span>
+        {% endfor %}
+      </div>
+
+      {% if room.status == 'AVAILABLE' %}
+        <a class="button" href="{% url 'book_room' room.pk %}">
+          Book this room <span>↗</span>
+        </a>
+      {% else %}
+        <p class="unavailable">This room is currently unavailable.</p>
+      {% endif %}
+    </div>
+  </section>
+{% endblock %}

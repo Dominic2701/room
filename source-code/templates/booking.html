@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+
+{% block title %}
+  Book room {{ room.room_number }}
+{% endblock %}
+
+{% block content %}
+  <section class="wrap booking-layout">
+    <div class="booking-summary">
+      <p class="eyebrow">Your room</p>
+      <h1>
+        {{ room.get_room_type_display }}<br />
+        <em>{{ room.room_number }}</em>
+      </h1>
+      <p>{{ room.description }}</p>
+      <div class="summary-price">
+        INR {{ room.price_per_night|floatformat:0 }}
+        <small>/ night</small>
+      </div>
+      <div class="summary-line">
+        <span>Capacity</span>
+        <strong>{{ room.capacity }} guests</strong>
+      </div>
+    </div>
+
+    <div class="form-panel booking-panel">
+      <h2>Plan your stay</h2>
+      <p class="form-intro">
+        Choose a payment method. Your room is confirmed only after payment
+        completion.
+      </p>
+
+      <form method="post" data-price="{{ room.price_per_night }}">
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+          <div class="form-errors">{{ form.non_field_errors }}</div>
+        {% endif %}
+
+        {% for field in form %}
+          <label>
+            {{ field.label }}
+            {{ field }}
+            {% if field.errors %}
+              <span class="field-error">{{ field.errors|striptags }}</span>
+            {% endif %}
+          </label>
+        {% endfor %}
+
+        <p class="payment-note">
+          The selected app will open on supported mobile devices. No card
+          numbers, CVV, or PINs are collected.
+        </p>
+
+        <div class="price-preview">
+          <span>Amount to pay</span>
+          <strong id="total-price">INR 0</strong>
+          <small id="night-count">Choose dates to calculate</small>
+        </div>
+
+        <button class="button button-full" type="submit">
+          Continue to payment <span>↗</span>
+        </button>
+      </form>
+    </div>
+  </section>
+{% endblock %}

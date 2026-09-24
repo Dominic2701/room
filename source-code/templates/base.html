@@ -1,0 +1,74 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>
+      {% block title %}
+        Staywise
+      {% endblock %}
+      | Room Booking
+    </title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="{% static 'css/style.css' %}" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="wrap nav-wrap">
+        <a class="brand" href="{% url 'home' %}">
+          <span class="brand-mark">S</span>
+          <span>staywise</span>
+        </a>
+        <button class="nav-toggle" aria-label="Toggle navigation">Menu</button>
+        <nav class="nav-links">
+          <a href="{% url 'room_list' %}">Rooms</a>
+          {% if user.is_authenticated %}
+            <a href="{% url 'my_bookings' %}">My stays</a>
+            <a href="{% url 'profile' %}">Profile</a>
+            {% if user.is_staff %}
+              <a href="{% url 'admin_dashboard' %}">Admin</a>
+            {% endif %}
+            <a class="nav-quiet" href="{% url 'logout' %}">Sign out</a>
+          {% else %}
+            <a class="nav-quiet" href="{% url 'login' %}">Sign in</a>
+            <a class="button button-small" href="{% url 'register' %}">
+              Join staywise
+            </a>
+          {% endif %}
+        </nav>
+      </div>
+    </header>
+    {% if messages %}
+    <div class="wrap alerts">
+      {% for message in messages %}
+      <div class="alert {{ message.tags }}">{{ message }}</div>
+      {% endfor %}
+    </div>
+    {% endif %}
+    <main>
+      {% block content %}{% endblock %}
+    </main>
+    <footer>
+      <div class="wrap footer-inner">
+        <div>
+          <a class="brand" href="{% url 'home' %}">
+            <span class="brand-mark">S</span>
+            <span>staywise</span>
+          </a>
+          <p>Thoughtful rooms for unhurried stays.</p>
+        </div>
+        <div class="footer-meta">
+          <span>Room booking, made clear.</span><span>© 2026 Staywise</span>
+        </div>
+      </div>
+    </footer>
+    <script src="{% static 'js/script.js' %}"></script>
+    {% block scripts %}{% endblock %}
+  </body>
+</html>

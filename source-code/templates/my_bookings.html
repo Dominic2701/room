@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% block title %}My stays{% endblock %}
+{% block content %}
+<section class="page-intro wrap">
+  <p class="eyebrow">Your account</p>
+  <h1>My <em>stays.</em></h1>
+  <p>Every booking, neatly kept in one place.</p>
+</section>
+<section class="wrap table-section">
+  {% if bookings %}
+  <div class="booking-table">
+    {% for booking in bookings %}
+    <div class="booking-row booking-head">
+      <span>Booking</span><span>Room</span><span>Dates</span><span>Total</span
+      ><span>Status</span><span></span>
+    </div>
+    <div class="booking-row">
+      <span
+        ><strong>{{ booking.booking_id }}</strong
+        ><small>{{ booking.booking_date|date:'d M Y' }}</small></span
+      ><span
+        >{{ booking.room.room_number }} · {{ booking.room.get_room_type_display
+        }}</span
+      ><span
+        >{{ booking.check_in|date:'d M' }} → {{ booking.check_out|date:'d M Y'
+        }}</span
+      ><span>INR {{ booking.total_amount|floatformat:0 }}</span
+      ><span class="status status-{{ booking.booking_status|lower }}"
+        >{{ booking.get_booking_status_display }}</span
+      ><span
+        ><a class="arrow-link" href="{% url 'booking_detail' booking.pk %}"
+          >↗</a
+        ></span
+      >
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <h3>No stays yet.</h3>
+    <p>Find a room and your next chapter starts here.</p>
+    <a class="button" href="{% url 'room_list' %}">Browse rooms</a>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

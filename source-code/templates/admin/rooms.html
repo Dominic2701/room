@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block title %}Manage rooms{% endblock %}
+{% block content %}
+<section class="wrap admin-header">
+  <div>
+    <p class="eyebrow">Operations / rooms</p>
+    <h1>Room <em>inventory.</em></h1>
+  </div>
+  <a class="button button-small" href="{% url 'admin_room_add' %}"
+    >Add room <span>+</span></a
+  >
+</section>
+<section class="wrap table-section">
+  <div class="booking-table">
+    <div class="booking-row booking-head">
+      <span>Room</span><span>Type</span><span>Rate</span><span>Capacity</span
+      ><span>Status</span><span>Actions</span>
+    </div>
+    {% for room in rooms %}
+    <div class="booking-row">
+      <span
+        ><strong>{{ room.room_number }}</strong
+        ><small>{{ room.room_id }}</small></span
+      ><span>{{ room.get_room_type_display }}</span
+      ><span>INR {{ room.price_per_night|floatformat:0 }}</span
+      ><span>{{ room.capacity }} guests</span
+      ><span class="status status-{{ room.status|lower }}"
+        >{{ room.get_status_display }}</span
+      ><span class="row-actions"
+        ><a href="{% url 'admin_room_edit' room.pk %}">Edit</a>
+        <form method="post" action="{% url 'admin_room_delete' room.pk %}">
+          {% csrf_token %}<button type="submit">Deactivate</button>
+        </form></span
+      >
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

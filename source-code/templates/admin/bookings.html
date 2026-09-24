@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% block title %}Manage bookings{% endblock %}
+{% block content %}
+<section class="wrap admin-header">
+  <div>
+    <p class="eyebrow">Operations / bookings</p>
+    <h1>All <em>stays.</em></h1>
+  </div>
+</section>
+<section class="wrap table-section">
+  <div class="booking-table">
+    <div class="booking-row booking-head">
+      <span>Booking</span><span>Guest</span><span>Room / dates</span
+      ><span>Total</span><span>Status</span><span>Actions</span>
+    </div>
+    {% for booking in bookings %}
+    <div class="booking-row">
+      <span
+        ><strong>{{ booking.booking_id }}</strong
+        ><small>{{ booking.booking_date|date:'d M Y' }}</small></span
+      ><span
+        >{{ booking.user.get_full_name|default:booking.user.username }}</span
+      ><span
+        >Room {{ booking.room.room_number }}<small
+          >{{ booking.check_in|date:'d M' }} → {{ booking.check_out|date:'d M'
+          }}</small
+        ></span
+      ><span>INR {{ booking.total_amount|floatformat:0 }}</span
+      ><span class="status status-{{ booking.booking_status|lower }}"
+        >{{ booking.get_booking_status_display }}</span
+      ><span class="row-actions"
+        >{% if booking.booking_status == 'PENDING' %}
+        <form
+          method="post"
+          action="{% url 'admin_booking_action' booking.pk 'confirm' %}"
+        >
+          {% csrf_token %}<button type="submit">Confirm</button>
+        </form>
+        <form
+          method="post"
+          action="{% url 'admin_booking_action' booking.pk 'reject' %}"
+        >
+          {% csrf_token %}<button type="submit">Reject</button>
+        </form>
+        {% elif booking.booking_status == 'CONFIRMED' %}
+        <form
+          method="post"
+          action="{% url 'admin_booking_action' booking.pk 'complete' %}"
+        >
+          {% csrf_token %}<button type="submit">Complete</button>
+        </form>
+        <form
+          method="post"
+          action="{% url 'admin_booking_action' booking.pk 'cancel' %}"
+        >
+          {% csrf_token %}<button type="submit">Cancel</button>
+        </form>
+        {% endif %}</span
+      >
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block title %}Create account{% endblock %}
+{% block content %}
+<section class="auth-page">
+  <div class="auth-aside">
+    <p class="eyebrow">Make room for more</p>
+    <h1>A better stay starts with a simpler booking.</h1>
+  </div>
+  <div class="form-panel">
+    <h2>Create your account</h2>
+    <p class="form-intro">
+      Save your details and keep every stay in one place.
+    </p>
+    <form method="post">
+      {% csrf_token %}{% for field in form %}<label
+        >{{ field.label }}{{ field }}{% if field.errors %}<span
+          class="field-error"
+          >{{ field.errors|striptags }}</span
+        >{% endif %}</label
+      >{% endfor %}<button class="button button-full" type="submit">
+        Create account <span>→</span>
+      </button>
+    </form>
+    <p class="form-foot">
+      Already have an account? <a href="{% url 'login' %}">Sign in</a>
+    </p>
+  </div>
+</section>
+{% endblock %}
