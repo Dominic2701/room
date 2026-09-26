@@ -12,7 +12,7 @@
     <div>
       <span>Room</span
       ><strong
-        >{{ booking.room.room_number }} · {{ booking.room.get_room_type_display
+        >{{ booking.residency.residency_name }} · {{ booking.room.room_number }} · {{ booking.room.get_room_type_display
         }}</strong
       >
     </div>
@@ -24,6 +24,7 @@
       >
     </div>
     <div><span>Guests</span><strong>{{ booking.guests }}</strong></div>
+    <div><span>Rooms</span><strong>{{ booking.number_of_rooms }}</strong></div>
     <div>
       <span>Total</span
       ><strong>INR {{ booking.total_amount|floatformat:0 }}</strong>

@@ -1,6 +1,21 @@
 from django.contrib import admin
 
-from .models import Booking, Payment, Profile, Room
+from .models import AdminAccount, AdminVerificationCode, Booking, Payment, Profile, Residency, Room
+
+
+@admin.register(Residency)
+class ResidencyAdmin(admin.ModelAdmin):
+    list_display = ("residency_name", "provider_name", "location", "status")
+    list_filter = ("status",)
+    search_fields = ("residency_name", "provider_name", "location")
+
+
+@admin.register(AdminAccount)
+class AdminAccountAdmin(admin.ModelAdmin):
+    list_display = ("username", "residency", "status", "created_at")
+    list_filter = ("status", "residency")
+    search_fields = ("username", "residency__residency_name")
+    exclude = ("password_hash",)
 
 
 @admin.register(Profile)
@@ -11,7 +26,7 @@ class ProfileAdmin(admin.ModelAdmin):
 
 @admin.register(Room)
 class RoomAdmin(admin.ModelAdmin):
-    list_display = ("room_number", "room_type", "price_per_night", "capacity", "status")
+    list_display = ("room_number", "room_type", "price_per_night", "total_rooms", "available_rooms", "status")
     list_filter = ("room_type", "status", "floor")
     search_fields = ("room_id", "room_number", "amenities")
     ordering = ("room_number",)
@@ -50,3 +65,9 @@ class PaymentAdmin(admin.ModelAdmin):
     )
     list_filter = ("payment_method", "payment_status")
     search_fields = ("payment_id", "transaction_id", "booking__booking_id")
+
+
+@admin.register(AdminVerificationCode)
+class AdminVerificationCodeAdmin(admin.ModelAdmin):
+    list_display = ("created_at", "expires_at", "attempts", "used")
+    readonly_fields = ("code_hash", "created_at")

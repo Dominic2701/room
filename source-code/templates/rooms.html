@@ -20,6 +20,8 @@
       <div class="filter-panel">
         <h2>Filters</h2>
         <form method="get">
+          <label>Residency{{ form.residency }}</label>
+          <label>Location{{ form.location }}</label>
           <label>Room type{{ form.room_type }}</label>
           <label>Minimum price{{ form.min_price }}</label>
           <label>Maximum price{{ form.max_price }}</label>
@@ -61,17 +63,17 @@
               <span class="property-rating">★ 4.{{ forloop.counter }} &nbsp; {{ room.capacity }} guests</span>
             </div>
             <div class="property-info">
-              <div class="property-topline">{{ room.get_room_type_display }} · Floor {{ room.floor }}</div>
+              <div class="property-topline">{{ room.residency.residency_name }} · {{ room.residency.location }}</div>
               <h2>{{ room.get_room_type_display }} Room {{ room.room_number }}</h2>
               <p class="property-meta">{{ room.amenity_list|slice:':3'|join:' · ' }}</p>
-              <div class="property-tags"><span>Available now</span><span>{{ room.capacity }} guests</span></div>
+              <div class="property-tags"><span>{% if room.available_rooms %}Available: {{ room.available_rooms }} / {{ room.total_rooms }}{% else %}Sold Out{% endif %}</span><span>{{ room.capacity }} guests</span></div>
             </div>
             <div class="property-price">
               <span class="deal-label">Great value</span>
               <del>INR {{ room.price_per_night|add:1000|floatformat:0 }}</del>
               <strong>INR {{ room.price_per_night|floatformat:0 }}</strong>
               <small>Per night</small>
-              <a class="select-room-button" href="{% url 'room_detail' room.pk %}">Select room</a>
+              {% if room.available_rooms %}<a class="select-room-button" href="{% url 'room_detail' room.pk %}">Select room</a>{% else %}<span class="select-room-button" aria-disabled="true">Sold Out</span>{% endif %}
             </div>
           </article>
         {% empty %}

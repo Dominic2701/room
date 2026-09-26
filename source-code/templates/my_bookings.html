@@ -11,7 +11,7 @@
   <div class="booking-table">
     {% for booking in bookings %}
     <div class="booking-row booking-head">
-      <span>Booking</span><span>Room</span><span>Dates</span><span>Total</span
+      <span>Booking</span><span>Residency / room</span><span>Dates</span><span>Rooms</span><span>Total</span
       ><span>Status</span><span></span>
     </div>
     <div class="booking-row">
@@ -19,11 +19,12 @@
         ><strong>{{ booking.booking_id }}</strong
         ><small>{{ booking.booking_date|date:'d M Y' }}</small></span
       ><span
-        >{{ booking.room.room_number }} · {{ booking.room.get_room_type_display
-        }}</span
+        >{{ booking.residency.residency_name }}<small>{{ booking.room.room_number }} · {{ booking.room.get_room_type_display
+        }}</small></span
       ><span
         >{{ booking.check_in|date:'d M' }} → {{ booking.check_out|date:'d M Y'
         }}</span
+      ><span>{{ booking.number_of_rooms }}</span
       ><span>INR {{ booking.total_amount|floatformat:0 }}</span
       ><span class="status status-{{ booking.booking_status|lower }}"
         >{{ booking.get_booking_status_display }}</span

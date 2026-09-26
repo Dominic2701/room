@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% block title %}Admin login{% endblock %}
+{% block content %}
+<section class="auth-page">
+  <div class="auth-aside"><p class="eyebrow">Operations</p><h1>Admin <em>login.</em></h1></div>
+  <div class="form-panel">
+    <h2>Admin Login</h2>
+    <p class="form-intro">Use your administrator username and password.</p>
+    <form method="post">{% csrf_token %}
+      <label>Username<input name="username" required autofocus></label>
+      <label>Password<input type="password" name="password" required></label>
+      <button class="button button-full" type="submit">Sign in <span>-></span></button>
+    </form>
+    <p class="form-foot">First time here? <a href="{% url 'admin_register' %}">Admin Registration</a></p>
+  </div>
+</section>
+{% endblock %}

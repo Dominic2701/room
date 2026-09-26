@@ -15,7 +15,7 @@
 
     <div class="detail-copy">
       <p class="eyebrow">
-        Room {{ room.room_number }} · Floor {{ room.floor }}
+        {{ room.residency.residency_name }} · {{ room.residency.location }} · Room {{ room.room_number }}
       </p>
       <h1>
         {{ room.get_room_type_display }}<br />
@@ -27,6 +27,7 @@
         <strong>INR {{ room.price_per_night|floatformat:0 }}</strong>
         <span>per night · up to {{ room.capacity }} guests</span>
       </div>
+      <p>Provider: {{ room.residency.provider_name }}</p>
 
       <div class="amenities">
         {% for amenity in room.amenity_list %}
@@ -34,10 +35,12 @@
         {% endfor %}
       </div>
 
-      {% if room.status == 'AVAILABLE' %}
+      {% if room.status == 'AVAILABLE' and room.available_rooms %}
         <a class="button" href="{% url 'book_room' room.pk %}">
           Book this room <span>↗</span>
         </a>
+      {% elif room.status == 'AVAILABLE' %}
+        <p class="unavailable">Sorry, this room is currently sold out.</p>
       {% else %}
         <p class="unavailable">This room is currently unavailable.</p>
       {% endif %}

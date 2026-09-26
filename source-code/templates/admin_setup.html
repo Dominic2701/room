@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block title %}Admin setup{% endblock %}
+{% block content %}
+<section class="auth-page">
+  <div class="auth-aside"><p class="eyebrow">Operations</p><h1>Admin account <em>setup.</em></h1></div>
+  <div class="form-panel">
+    <h2>Admin Account Setup</h2>
+    {% if not verified %}
+      <p class="form-intro">Verify the developer account before creating an admin.</p>
+      <form method="post">{% csrf_token %}<input type="hidden" name="action" value="verify">
+        <label>Developer Gmail<input type="email" name="developer_email" required></label>
+        <label>Developer Password<input type="password" name="developer_password" required></label>
+        <button class="button button-full" type="submit">Verify Developer <span>-></span></button>
+      </form>
+    {% else %}
+      <p class="form-intro">Developer verified. Create an admin for one residency.</p>
+      <form method="post">{% csrf_token %}<input type="hidden" name="action" value="create">
+        <label>Residency / Hotel Name<input name="residency_name" required></label>
+        <label>Provider Name<input name="provider_name" required></label>
+        <label>Location<input name="location" required></label>
+        <label>Admin Username<input name="username" required></label>
+        <label>Admin Password<input type="password" name="password" minlength="8" required></label>
+        <label>Confirm Password<input type="password" name="confirm_password" minlength="8" required></label>
+        <button class="button button-full" type="submit">Create Admin Account <span>-></span></button>
+      </form>
+    {% endif %}
+    <p class="form-foot"><a href="{% url 'login' %}">Back to user login</a></p>
+  </div>
+</section>
+{% endblock %}

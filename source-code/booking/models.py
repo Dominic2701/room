@@ -17,6 +17,48 @@ class Profile(models.Model):
         return f"{self.user.get_full_name() or self.user.username}'s profile"
 
 
+class Residency(models.Model):
+    class Status(models.TextChoices):
+        ACTIVE = "ACTIVE", "Active"
+        INACTIVE = "INACTIVE", "Inactive"
+
+    residency_name = models.CharField(max_length=150, unique=True)
+    provider_name = models.CharField(max_length=150)
+    location = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.ACTIVE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "residency"
+        ordering = ["residency_name"]
+
+    def __str__(self):
+        return self.residency_name
+
+
+class AdminAccount(models.Model):
+    class Status(models.TextChoices):
+        ACTIVE = "ACTIVE", "Active"
+        INACTIVE = "INACTIVE", "Inactive"
+
+    residency = models.ForeignKey(
+        Residency, on_delete=models.PROTECT, related_name="admins"
+    )
+    username = models.CharField(max_length=150, unique=True)
+    password_hash = models.CharField(max_length=128)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.ACTIVE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "admin"
+
+    def __str__(self):
+        return self.username
+
+
 class Room(models.Model):
     class RoomType(models.TextChoices):
         SINGLE = "SINGLE", "Single"
@@ -31,12 +73,17 @@ class Room(models.Model):
         INACTIVE = "INACTIVE", "Inactive"
 
     room_id = models.CharField(max_length=12, unique=True, editable=False, default="")
-    room_number = models.PositiveIntegerField(unique=True)
+    residency = models.ForeignKey(
+        Residency, on_delete=models.PROTECT, related_name="rooms"
+    )
+    room_number = models.PositiveIntegerField()
     room_type = models.CharField(max_length=10, choices=RoomType.choices)
     description = models.TextField()
     price_per_night = models.DecimalField(
         max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal("0.01"))]
     )
+    total_rooms = models.PositiveIntegerField(default=1)
+    available_rooms = models.PositiveIntegerField(default=1)
     capacity = models.PositiveIntegerField(validators=[MinValueValidator(1)])
     floor = models.PositiveIntegerField()
     amenities = models.CharField(max_length=255, help_text="Comma-separated amenities")
@@ -48,11 +95,30 @@ class Room(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        db_table = "room_details"
         ordering = ["room_number"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["residency", "room_number"],
+                name="room_number_unique_per_residency",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(available_rooms__lte=models.F("total_rooms")),
+                name="room_available_not_above_total",
+            ),
+        ]
 
     def save(self, *args, **kwargs):
         if not self.room_id:
             self.room_id = f"RM-{uuid4().hex[:8].upper()}"
+        if not self.residency_id:
+            self.residency, _ = Residency.objects.get_or_create(
+                residency_name="Legacy Residency",
+                defaults={
+                    "provider_name": "Staywise",
+                    "location": "Unassigned",
+                },
+            )
         super().save(*args, **kwargs)
 
     @property
@@ -76,9 +142,13 @@ class Booking(models.Model):
     )
     user = models.ForeignKey(User, on_delete=models.PROTECT, related_name="bookings")
     room = models.ForeignKey(Room, on_delete=models.PROTECT, related_name="bookings")
+    residency = models.ForeignKey(
+        Residency, on_delete=models.PROTECT, related_name="bookings"
+    )
     check_in = models.DateField()
     check_out = models.DateField()
     guests = models.PositiveIntegerField()
+    number_of_rooms = models.PositiveIntegerField(default=1)
     number_of_nights = models.PositiveIntegerField(default=0)
     price_per_night = models.DecimalField(max_digits=10, decimal_places=2)
     total_amount = models.DecimalField(
@@ -91,14 +161,20 @@ class Booking(models.Model):
     special_request = models.TextField(blank=True)
 
     class Meta:
+        db_table = "booking_details"
         ordering = ["-booking_date"]
 
     def save(self, *args, **kwargs):
         if not self.booking_id:
             self.booking_id = f"BK-{uuid4().hex[:8].upper()}"
         self.number_of_nights = (self.check_out - self.check_in).days
-        self.price_per_night = self.room.price_per_night
-        self.total_amount = self.price_per_night * self.number_of_nights
+        if not self.price_per_night:
+            self.price_per_night = self.room.price_per_night
+        if not self.residency_id:
+            self.residency = self.room.residency
+        self.total_amount = (
+            self.price_per_night * self.number_of_rooms * self.number_of_nights
+        )
         super().save(*args, **kwargs)
 
     @property
@@ -149,3 +225,15 @@ class Payment(models.Model):
 
     def __str__(self):
         return self.payment_id
+
+
+class AdminVerificationCode(models.Model):
+    code_hash = models.CharField(max_length=128)
+    expires_at = models.DateTimeField()
+    attempts = models.PositiveIntegerField(default=0)
+    used = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "admin_verification"
+        ordering = ["-created_at"]

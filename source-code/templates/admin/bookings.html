@@ -10,7 +10,7 @@
 <section class="wrap table-section">
   <div class="booking-table">
     <div class="booking-row booking-head">
-      <span>Booking</span><span>Guest</span><span>Room / dates</span
+      <span>Booking</span><span>Guest</span><span>Residency / room / dates</span
       ><span>Total</span><span>Status</span><span>Actions</span>
     </div>
     {% for booking in bookings %}
@@ -21,7 +21,7 @@
       ><span
         >{{ booking.user.get_full_name|default:booking.user.username }}</span
       ><span
-        >Room {{ booking.room.room_number }}<small
+        >{{ booking.residency.residency_name }} · Room {{ booking.room.room_number }} · {{ booking.number_of_rooms }} rooms<small
           >{{ booking.check_in|date:'d M' }} → {{ booking.check_out|date:'d M'
           }}</small
         ></span

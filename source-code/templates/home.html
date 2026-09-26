@@ -10,23 +10,16 @@
 
   <section class="reference-search-wrap">
     <div class="wrap reference-search">
-      <div class="location-field">
-        <span class="search-icon">⌕</span>
-        <span>
-          <small>City, area or hotel name</small>
-          <strong>Choose your destination</strong>
-        </span>
-      </div>
       <form class="reference-search-form" action="{% url 'room_list' %}" method="get">
-        <label>
+        <label class="search-field">
           <small>Check-in</small>
           <input type="date" name="check_in" required />
         </label>
-        <label>
+        <label class="search-field">
           <small>Check-out</small>
           <input type="date" name="check_out" required />
         </label>
-        <label>
+        <label class="search-field">
           <small>No. of rooms & guests</small>
           <input type="number" name="capacity" min="1" placeholder="1 room · 2 guests" />
         </label>

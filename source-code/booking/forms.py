@@ -76,15 +76,19 @@ class ProfileForm(forms.ModelForm):
 
 
 class BookingForm(forms.ModelForm):
+    number_of_rooms = forms.IntegerField(
+        min_value=1, initial=1, required=False, label="Rooms"
+    )
     payment_method = forms.ChoiceField(
         choices=Payment.Method.choices,
         initial=Payment.Method.GPAY,
+        required=False,
         label="Payment method",
     )
 
     class Meta:
         model = Booking
-        fields = ("check_in", "check_out", "guests", "special_request")
+        fields = ("check_in", "check_out", "guests", "number_of_rooms", "special_request")
         widgets = {
             "check_in": forms.DateInput(attrs={"type": "date"}),
             "check_out": forms.DateInput(attrs={"type": "date"}),
@@ -102,6 +106,9 @@ class BookingForm(forms.ModelForm):
         check_in = cleaned.get("check_in")
         check_out = cleaned.get("check_out")
         guests = cleaned.get("guests")
+        number_of_rooms = cleaned.get("number_of_rooms")
+        if not number_of_rooms:
+            cleaned["number_of_rooms"] = number_of_rooms = 1
         if check_in and check_in < timezone.localdate():
             self.add_error("check_in", "Check-in cannot be in the past.")
         if check_in and check_out and check_out <= check_in:
@@ -110,7 +117,11 @@ class BookingForm(forms.ModelForm):
             self.add_error(
                 "guests", f"This room accommodates up to {self.room.capacity} guests."
             )
-        if check_in and check_out and check_out > check_in:
+        if number_of_rooms and number_of_rooms > self.room.available_rooms:
+            raise forms.ValidationError(
+                f"Only {self.room.available_rooms} rooms are currently available."
+            )
+        if self.room.total_rooms == 1 and check_in and check_out and check_out > check_in:
             conflict = Booking.objects.filter(
                 room=self.room,
                 booking_status__in=[Booking.Status.PENDING, Booking.Status.CONFIRMED],
@@ -120,15 +131,15 @@ class BookingForm(forms.ModelForm):
             if self.instance.pk:
                 conflict = conflict.exclude(pk=self.instance.pk)
             if conflict.exists():
-                raise forms.ValidationError(
-                    "This room is already booked for those dates."
-                )
+                raise forms.ValidationError("This room is already booked for those dates.")
         if self.room.status != Room.Status.AVAILABLE:
             raise forms.ValidationError("This room is currently unavailable.")
         return cleaned
 
 
 class RoomFilterForm(forms.Form):
+    residency = forms.CharField(required=False, label="Residency")
+    location = forms.CharField(required=False, label="Location")
     room_type = forms.ChoiceField(
         choices=[("", "All room types"), *Room.RoomType.choices], required=False
     )
@@ -167,9 +178,19 @@ class RoomForm(forms.ModelForm):
             "room_type",
             "description",
             "price_per_night",
+            "total_rooms",
+            "available_rooms",
             "capacity",
             "floor",
             "amenities",
             "image",
             "status",
         )
+
+    def clean(self):
+        cleaned = super().clean()
+        total = cleaned.get("total_rooms")
+        available = cleaned.get("available_rooms")
+        if total is not None and available is not None and available > total:
+            raise forms.ValidationError("Available rooms cannot be greater than total rooms.")
+        return cleaned

@@ -4,7 +4,7 @@
 <section class="wrap admin-header">
   <div>
     <p class="eyebrow">Operations</p>
-    <h1>Good morning, <em>admin.</em></h1>
+    <h1>{{ residency.residency_name }}<br /><em>dashboard.</em></h1>
   </div>
   <a class="button button-small" href="{% url 'admin_room_add' %}"
     >Add a room <span>+</span></a
@@ -13,9 +13,11 @@
 <section class="wrap stats-grid">
   <div class="stat"><span>Users</span><strong>{{ user_count }}</strong></div>
   <div class="stat"><span>Rooms</span><strong>{{ room_count }}</strong></div>
+  <div class="stat"><span>Total inventory</span><strong>{{ total_rooms }}</strong></div>
   <div class="stat">
     <span>Available</span><strong>{{ available_rooms }}</strong>
   </div>
+  <div class="stat"><span>Booked rooms</span><strong>{{ booked_rooms }}</strong></div>
   <div class="stat">
     <span>Bookings</span><strong>{{ booking_count }}</strong>
   </div>

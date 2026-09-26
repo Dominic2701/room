@@ -1,9 +1,11 @@
 from io import BytesIO
-
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth.hashers import check_password, make_password
 from django.contrib.auth.models import User
+from django.db import transaction
 from django.db.models import Sum
 from django.core.exceptions import PermissionDenied
 from django.http import FileResponse, Http404
@@ -16,11 +18,14 @@ from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, Tabl
 from reportlab.lib import colors
 
 from .forms import BookingForm, ProfileForm, RegistrationForm, RoomFilterForm, RoomForm
-from .models import Booking, Payment, Profile, Room
+from .models import AdminAccount, Booking, Payment, Profile, Residency, Room
 
 
 def home(request):
-    featured_rooms = Room.objects.filter(status=Room.Status.AVAILABLE)[:3]
+    featured_rooms = Room.objects.filter(
+        status=Room.Status.AVAILABLE, available_rooms__gt=0,
+        residency__status=Residency.Status.ACTIVE,
+    ).select_related("residency")[:3]
     return render(request, "home.html", {"featured_rooms": featured_rooms})
 
 
@@ -47,22 +52,103 @@ def login_view(request):
         user = authenticate(request, username=username, password=password)
         if user:
             login(request, user)
-            return redirect("admin_dashboard" if user.is_staff else "home")
+            return redirect("home")
         messages.error(request, "The username or password was not recognised.")
     return render(request, "login.html")
 
 
+def admin_login(request):
+    if not AdminAccount.objects.filter(status=AdminAccount.Status.ACTIVE).exists():
+        return redirect("admin_register")
+    if request.method == "POST":
+        username = request.POST.get("username", "").strip()
+        password = request.POST.get("password", "")
+        admin = AdminAccount.objects.filter(
+            username=username, status=AdminAccount.Status.ACTIVE
+        ).first()
+        if admin and check_password(password, admin.password_hash):
+            request.session.cycle_key()
+            request.session["admin_account_id"] = admin.pk
+            messages.success(request, "Admin login successful.")
+            return redirect("admin_dashboard")
+        messages.error(request, "Invalid admin username or password.")
+    return render(request, "admin_login.html")
+
+
+def admin_register(request):
+    verified = request.session.get("developer_verified", False)
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "verify":
+            email = request.POST.get("developer_email", "").strip().lower()
+            password = request.POST.get("developer_password", "")
+            if not settings.DEVELOPER_PASSWORD_HASH:
+                messages.error(
+                    request,
+                    "Developer verification is not configured. Generate DEVELOPER_PASSWORD_HASH in source-code/.env first.",
+                )
+            elif (
+                email == settings.DEVELOPER_EMAIL.lower()
+                and check_password(password, settings.DEVELOPER_PASSWORD_HASH)
+            ):
+                request.session["developer_verified"] = True
+                verified = True
+                messages.success(request, "Developer verification successful.")
+            else:
+                messages.error(request, "Developer verification failed.")
+        elif action == "create" and verified:
+            residency_name = request.POST.get("residency_name", "").strip()
+            provider_name = request.POST.get("provider_name", "").strip()
+            location = request.POST.get("location", "").strip()
+            username = request.POST.get("username", "").strip()
+            password = request.POST.get("password", "")
+            confirmation = request.POST.get("confirm_password", "")
+            if not residency_name or not provider_name or not location or not username:
+                messages.error(request, "Complete the residency and admin fields.")
+            elif len(password) < 8 or password != confirmation:
+                messages.error(request, "Enter matching admin passwords of at least 8 characters.")
+            elif AdminAccount.objects.filter(username=username).exists():
+                messages.error(request, "That admin username is already in use.")
+            else:
+                residency, _ = Residency.objects.get_or_create(
+                    residency_name=residency_name,
+                    defaults={"provider_name": provider_name, "location": location},
+                )
+                AdminAccount.objects.create(
+                    residency=residency,
+                    username=username,
+                    password_hash=make_password(password),
+                )
+                request.session.pop("developer_verified", None)
+                messages.success(request, "Admin registration successful.")
+                return redirect("admin_login")
+    return render(request, "admin_setup.html", {"verified": verified})
+
+
+def admin_setup(request):
+    return redirect("admin_register")
+
+
 def logout_view(request):
     logout(request)
+    request.session.pop("admin_account_id", None)
+    request.session.pop("developer_verified", None)
     messages.info(request, "You have been signed out.")
     return redirect("home")
 
 
 def room_list(request):
     form = RoomFilterForm(request.GET or None)
-    rooms = Room.objects.filter(status=Room.Status.AVAILABLE)
+    rooms = Room.objects.filter(
+        status=Room.Status.AVAILABLE,
+        residency__status=Residency.Status.ACTIVE,
+    ).select_related("residency")
     if form.is_valid():
         data = form.cleaned_data
+        if data.get("residency"):
+            rooms = rooms.filter(residency__residency_name__icontains=data["residency"])
+        if data.get("location"):
+            rooms = rooms.filter(residency__location__icontains=data["location"])
         if data.get("room_type"):
             rooms = rooms.filter(room_type=data["room_type"])
         if data.get("min_price") is not None:
@@ -73,6 +159,7 @@ def room_list(request):
             rooms = rooms.filter(capacity__gte=data["capacity"])
         if data.get("check_in") and data.get("check_out"):
             blocked = Booking.objects.filter(
+                room__total_rooms=1,
                 booking_status__in=[Booking.Status.PENDING, Booking.Status.CONFIRMED],
                 check_in__lt=data["check_out"],
                 check_out__gt=data["check_in"],
@@ -91,24 +178,40 @@ def book_room(request, room_id):
     room = get_object_or_404(Room, pk=room_id)
     form = BookingForm(request.POST or None, room=room)
     if request.method == "POST" and form.is_valid():
-        booking = form.save(commit=False)
-        booking.user = request.user
-        booking.room = room
-        booking.booking_status = Booking.Status.PENDING
-        booking.save()
-        Payment.objects.create(
-            booking=booking,
-            amount=booking.total_amount,
-            payment_status=Payment.Status.PENDING,
-            payment_method=form.cleaned_data["payment_method"],
-        )
-        return redirect("payment_checkout", pk=booking.pk)
+        requested = form.cleaned_data["number_of_rooms"]
+        with transaction.atomic():
+            locked_room = Room.objects.select_for_update().get(pk=room.pk)
+            if locked_room.status != Room.Status.AVAILABLE:
+                form.add_error(None, "This room is currently unavailable.")
+            elif requested > locked_room.available_rooms:
+                form.add_error(
+                    None, f"Only {locked_room.available_rooms} rooms are currently available."
+                )
+            else:
+                locked_room.available_rooms -= requested
+                locked_room.save(update_fields=["available_rooms", "updated_at"])
+                booking = form.save(commit=False)
+                booking.user = request.user
+                booking.room = locked_room
+                booking.number_of_rooms = requested
+                booking.booking_status = Booking.Status.PENDING
+                booking.save()
+                Payment.objects.create(
+                    booking=booking,
+                    amount=booking.total_amount,
+                    payment_status=Payment.Status.PENDING,
+                    payment_method=form.cleaned_data["payment_method"] or Payment.Method.GPAY,
+                )
+                return redirect("payment_checkout", pk=booking.pk)
     return render(request, "booking.html", {"room": room, "form": form})
 
 
 def _owned_booking(request, pk):
     booking = get_object_or_404(Booking.objects.select_related("room", "user"), pk=pk)
-    if not request.user.is_staff and booking.user_id != request.user.id:
+    admin = getattr(request, "admin_account", None)
+    if admin and booking.residency_id != admin.residency_id:
+        raise Http404
+    if not admin and booking.user_id != request.user.id:
         raise Http404
     return booking
 
@@ -164,11 +267,18 @@ def cancel_booking(request, pk):
     booking = _owned_booking(request, pk)
     if request.method == "POST":
         if booking.is_cancellable:
-            booking.booking_status = Booking.Status.CANCELLED
-            booking.save(update_fields=["booking_status"])
-            Payment.objects.filter(
-                booking=booking, payment_status=Payment.Status.SUCCESS
-            ).update(payment_status=Payment.Status.REFUNDED)
+            with transaction.atomic():
+                locked_room = Room.objects.select_for_update().get(pk=booking.room_id)
+                locked_room.available_rooms = min(
+                    locked_room.total_rooms,
+                    locked_room.available_rooms + booking.number_of_rooms,
+                )
+                locked_room.save(update_fields=["available_rooms", "updated_at"])
+                booking.booking_status = Booking.Status.CANCELLED
+                booking.save(update_fields=["booking_status"])
+                Payment.objects.filter(
+                    booking=booking, payment_status=Payment.Status.SUCCESS
+                ).update(payment_status=Payment.Status.REFUNDED)
             messages.success(request, "Booking cancelled successfully.")
         else:
             messages.error(request, "This booking can no longer be cancelled.")
@@ -201,6 +311,7 @@ def booking_receipt(request, pk):
         ["Check-in", booking.check_in.strftime("%d %B %Y")],
         ["Check-out", booking.check_out.strftime("%d %B %Y")],
         ["Guests", str(booking.guests)],
+        ["Rooms", str(booking.number_of_rooms)],
         ["Nights", str(booking.number_of_nights)],
         ["Price per night", f"INR {booking.price_per_night:,.2f}"],
         ["Total", f"INR {booking.total_amount:,.2f}"],
@@ -243,10 +354,14 @@ def profile(request):
 
 
 def staff_required(view):
-    @login_required
     def wrapped(request, *args, **kwargs):
-        if not request.user.is_staff:
+        admin_id = request.session.get("admin_account_id")
+        admin = AdminAccount.objects.filter(
+            pk=admin_id, status=AdminAccount.Status.ACTIVE
+        ).select_related("residency").first()
+        if not admin:
             raise PermissionDenied
+        request.admin_account = admin
         return view(request, *args, **kwargs)
 
     return wrapped
@@ -254,38 +369,50 @@ def staff_required(view):
 
 @staff_required
 def admin_dashboard(request):
+    residency = request.admin_account.residency
+    rooms = Room.objects.filter(residency=residency)
+    bookings = Booking.objects.filter(residency=residency)
     context = {
-        "user_count": User.objects.count(),
-        "room_count": Room.objects.count(),
-        "available_rooms": Room.objects.filter(status=Room.Status.AVAILABLE).count(),
-        "booking_count": Booking.objects.count(),
-        "pending_count": Booking.objects.filter(
+        "residency": residency,
+        "user_count": bookings.values("user_id").distinct().count(),
+        "room_count": rooms.count(),
+        "total_rooms": rooms.aggregate(total=Sum("total_rooms"))["total"] or 0,
+        "available_rooms": rooms.aggregate(total=Sum("available_rooms"))["total"] or 0,
+        "booked_rooms": (rooms.aggregate(total=Sum("total_rooms"))["total"] or 0)
+        - (rooms.aggregate(total=Sum("available_rooms"))["total"] or 0),
+        "booking_count": bookings.count(),
+        "pending_count": bookings.filter(
             booking_status=Booking.Status.PENDING
         ).count(),
-        "confirmed_count": Booking.objects.filter(
+        "confirmed_count": bookings.filter(
             booking_status=Booking.Status.CONFIRMED
         ).count(),
-        "cancelled_count": Booking.objects.filter(
+        "cancelled_count": bookings.filter(
             booking_status=Booking.Status.CANCELLED
         ).count(),
-        "revenue": Booking.objects.filter(
+        "revenue": bookings.filter(
             booking_status__in=[Booking.Status.CONFIRMED, Booking.Status.COMPLETED]
         ).aggregate(total=Sum("total_amount"))["total"]
         or 0,
-        "recent_bookings": Booking.objects.select_related("user", "room")[:6],
+        "recent_bookings": bookings.select_related("user", "room")[:6],
     }
     return render(request, "admin/dashboard.html", context)
 
 
 @staff_required
 def admin_rooms(request):
-    return render(request, "admin/rooms.html", {"rooms": Room.objects.all()})
+    return render(
+        request,
+        "admin/rooms.html",
+        {"rooms": Room.objects.filter(residency=request.admin_account.residency)},
+    )
 
 
 @staff_required
 def admin_room_add(request):
     form = RoomForm(request.POST or None, request.FILES or None)
     if request.method == "POST" and form.is_valid():
+        form.instance.residency = request.admin_account.residency
         form.save()
         messages.success(request, "Room added.")
         return redirect("admin_rooms")
@@ -294,7 +421,9 @@ def admin_room_add(request):
 
 @staff_required
 def admin_room_edit(request, pk):
-    room = get_object_or_404(Room, pk=pk)
+    room = get_object_or_404(
+        Room, pk=pk, residency=request.admin_account.residency
+    )
     form = RoomForm(request.POST or None, request.FILES or None, instance=room)
     if request.method == "POST" and form.is_valid():
         form.save()
@@ -309,7 +438,9 @@ def admin_room_edit(request, pk):
 
 @staff_required
 def admin_room_delete(request, pk):
-    room = get_object_or_404(Room, pk=pk)
+    room = get_object_or_404(
+        Room, pk=pk, residency=request.admin_account.residency
+    )
     if request.method == "POST":
         room.status = Room.Status.INACTIVE
         room.save(update_fields=["status"])
@@ -319,13 +450,17 @@ def admin_room_delete(request, pk):
 
 @staff_required
 def admin_bookings(request):
-    bookings = Booking.objects.select_related("user", "room")
+    bookings = Booking.objects.filter(
+        residency=request.admin_account.residency
+    ).select_related("user", "room")
     return render(request, "admin/bookings.html", {"bookings": bookings})
 
 
 @staff_required
 def admin_booking_action(request, pk, action):
-    booking = get_object_or_404(Booking, pk=pk)
+    booking = get_object_or_404(
+        Booking, pk=pk, residency=request.admin_account.residency
+    )
     transitions = {
         "confirm": Booking.Status.CONFIRMED,
         "reject": Booking.Status.REJECTED,
@@ -343,8 +478,15 @@ def admin_booking_action(request, pk, action):
         and action in transitions
         and booking.booking_status in allowed_statuses[action]
     ):
-        booking.booking_status = transitions[action]
-        booking.save(update_fields=["booking_status"])
+        with transaction.atomic():
+            if transitions[action] in {Booking.Status.REJECTED, Booking.Status.CANCELLED}:
+                room = Room.objects.select_for_update().get(pk=booking.room_id)
+                room.available_rooms = min(
+                    room.total_rooms, room.available_rooms + booking.number_of_rooms
+                )
+                room.save(update_fields=["available_rooms", "updated_at"])
+            booking.booking_status = transitions[action]
+            booking.save(update_fields=["booking_status"])
         messages.success(
             request,
             f"Booking {booking.booking_id} marked {booking.get_booking_status_display().lower()}.",
@@ -354,17 +496,23 @@ def admin_booking_action(request, pk, action):
 
 @staff_required
 def admin_users(request):
+    user_ids = Booking.objects.filter(
+        residency=request.admin_account.residency
+    ).values("user_id")
     return render(
         request,
         "admin/users.html",
-        {"users": User.objects.select_related("profile").order_by("-date_joined")},
+        {"users": User.objects.filter(id__in=user_ids).select_related("profile").order_by("-date_joined")},
     )
 
 
 @staff_required
 def admin_payments(request):
+    booking_ids = Booking.objects.filter(
+        residency=request.admin_account.residency
+    ).values("pk")
     return render(
         request,
         "admin/payments.html",
-        {"payments": Payment.objects.select_related("booking", "booking__user")},
+        {"payments": Payment.objects.filter(booking_id__in=booking_ids).select_related("booking", "booking__user")},
     )

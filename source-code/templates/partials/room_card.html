@@ -10,6 +10,7 @@
   <div class="room-card-body">
     <div>
       <h3>{{ room.get_room_type_display }} room</h3>
+      <p>{{ room.residency.residency_name }} · {{ room.residency.location }}</p>
       <p>Room {{ room.room_number }} · {{ room.capacity }} guests · Floor {{ room.floor }}</p>
     </div>
     <strong class="price">
@@ -20,17 +21,23 @@
 
   <div class="room-card-foot">
     <span class="room-amenities">
+      {% if room.available_rooms %}
+        Available: {{ room.available_rooms }} of {{ room.total_rooms }} rooms
+      {% else %}
+        Sold Out
+      {% endif %}
+      {% if room.amenity_list %} · {% endif %}
       {% for amenity in room.amenity_list|slice:':3' %}
         {{ amenity }}
         {% if not forloop.last %} · {% endif %}
       {% endfor %}
     </span>
-    <a
+    {% if room.available_rooms %}<a
       class="button card-button"
       href="{% url 'room_detail' room.pk %}"
       aria-label="View room {{ room.room_number }}"
     >
       View details <span>→</span>
-    </a>
+    </a>{% else %}<span class="button card-button" aria-disabled="true">Sold Out</span>{% endif %}
   </div>
 </article>
