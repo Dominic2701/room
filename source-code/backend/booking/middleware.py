@@ -1,6 +1,6 @@
 import os
 
-from django.core.exceptions import ImproperlyConfigured
+from django.http import HttpResponse
 
 
 class VercelConfigurationMiddleware:
@@ -24,9 +24,12 @@ class VercelConfigurationMiddleware:
                 )
 
             if missing:
-                raise ImproperlyConfigured(
-                    "Configure these Vercel environment variables before using "
-                    f"the app: {', '.join(missing)}."
+                return HttpResponse(
+                    "The application is deployed, but its production configuration "
+                    f"is incomplete. Configure these Vercel environment variables: "
+                    f"{', '.join(missing)}. Then redeploy.",
+                    status=503,
+                    content_type="text/plain; charset=utf-8",
                 )
 
         return self.get_response(request)
