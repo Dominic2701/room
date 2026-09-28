@@ -2,17 +2,12 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
-from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 load_dotenv(BASE_DIR / ".env")
 
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
 if not SECRET_KEY:
-    if os.getenv("VERCEL"):
-        raise ImproperlyConfigured(
-            "Set DJANGO_SECRET_KEY in the Vercel project environment variables."
-        )
     SECRET_KEY = "dev-only-change-me"
 
 DEBUG = (
@@ -48,6 +43,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "booking.middleware.VercelConfigurationMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -86,11 +82,6 @@ if os.getenv("DB_ENGINE", "sqlite").lower() == "mysql":
         }
     }
 else:
-    if os.getenv("VERCEL"):
-        raise ImproperlyConfigured(
-            "Vercel functions cannot persist SQLite data. Configure DB_ENGINE=mysql "
-            "and connect a persistent MySQL database."
-        )
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",

@@ -49,7 +49,7 @@ Create rooms through the staff dashboard or Django admin. Suggested starter inve
 
 ## Deploy to Vercel
 
-Set Vercel's project root to the repository root (the directory containing the root-level `manage.py` and `requirements.txt`), not `source-code`. Vercel detects Django from `manage.py`, runs the app as a function, and collects files from `STATIC_ROOT` for CDN delivery.
+Set Vercel's project root to the repository root (the directory containing root-level `pyproject.toml`, `wsgi.py`, `manage.py`, and `requirements.txt`), not `source-code`. The explicit `tool.vercel.entrypoint` setting points Vercel to the root WSGI launcher; Vercel collects Django static files from `STATIC_ROOT` for CDN delivery.
 
 Django needs a persistent database; Vercel's function filesystem is temporary, so the local SQLite database is not suitable for deployment. Provision a MySQL database reachable from Vercel, then add these environment variables in **Vercel → Project → Settings → Environment Variables** for the environments you deploy:
 
@@ -60,7 +60,7 @@ Django needs a persistent database; Vercel's function filesystem is temporary, s
 - `DB_ENGINE`: `mysql`
 - `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, and `DB_PORT`: credentials for the persistent MySQL database
 
-Redeploy after adding the variables. Apply database migrations against that database with `python framework\manage.py migrate` from `source-code`, using the same database environment values. Vercel's temporary filesystem also does not persist uploaded `media/` files; use persistent object storage before relying on uploads in production.
+Redeploy after adding the variables. Apply database migrations against that database with `python framework\manage.py migrate` from `source-code`, using the same database environment values. Vercel can now complete its build without runtime credentials, but the app will report which required variables are missing on requests until they are configured. Vercel's temporary filesystem also does not persist uploaded `media/` files; use persistent object storage before relying on uploads in production.
 
 ## Tests
 
