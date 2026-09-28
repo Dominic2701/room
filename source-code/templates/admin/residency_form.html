@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<section class="wrap profile-layout">
+  <div class="page-intro"><p class="eyebrow">Operations / properties</p><h1>{{ title }}.</h1><p>Residency details and user-facing photos.</p></div>
+  <div class="form-panel">
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      {% for field in form %}
+        <label>{{ field.label }}{{ field }}{% if field.errors %}<span class="field-error">{{ field.errors|striptags }}</span>{% endif %}</label>
+      {% endfor %}
+      {% if residency.main_image %}<p>Current image: <img class="form-image-preview" src="{{ residency.main_image.url }}" alt="{{ residency.residency_name }}"></p>{% endif %}
+      <button class="button" type="submit">Save residency <span>→</span></button>
+    </form>
+    {% if residency %}<p class="form-foot"><a href="{% url 'admin_residency_images' residency.pk %}">Manage images</a></p>{% endif %}
+  </div>
+</section>
+{% endblock %}

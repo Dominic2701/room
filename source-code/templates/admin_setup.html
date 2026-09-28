@@ -8,12 +8,12 @@
     {% if not verified %}
       <p class="form-intro">Verify the developer account before creating an admin.</p>
       <form method="post">{% csrf_token %}<input type="hidden" name="action" value="verify">
-        <label>Developer Gmail<input type="email" name="developer_email" required></label>
+        <label>Developer Email<input type="email" name="developer_email" required></label>
         <label>Developer Password<input type="password" name="developer_password" required></label>
         <button class="button button-full" type="submit">Verify Developer <span>-></span></button>
       </form>
     {% else %}
-      <p class="form-intro">Developer verified. Create an admin for one residency.</p>
+      <p class="form-intro">Developer verified. Create an admin account and its first residency.</p>
       <form method="post">{% csrf_token %}<input type="hidden" name="action" value="create">
         <label>Residency / Hotel Name<input name="residency_name" required></label>
         <label>Provider Name<input name="provider_name" required></label>

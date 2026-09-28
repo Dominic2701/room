@@ -3,8 +3,8 @@
 {% block content %}
   <section class="reference-hero">
     <div class="wrap reference-hero-content">
-      <h1>WELCOME TO SHRINE BASILICAA</h1>
-      <p class="hero-location">⌖ &nbsp; 2400+ Rooms Available</p>
+      <h1>WELCOME TO JESI PARK</h1>
+      <p class="hero-location">⌖ &nbsp; {{ available_room_count }} Rooms Available</p>
     </div>
   </section>
 
@@ -37,13 +37,19 @@
       {% for room in featured_rooms %}
         <article class="deal-card">
           <div class="deal-image">
-            <span class="deal-rating">★ 4.{{ forloop.counter }} · {{ room.capacity }} guests</span>
+            {% if room.residency.main_image %}
+              <img src="{{ room.residency.main_image.url }}" alt="{{ room.residency.residency_name }}" loading="lazy">
+            {% elif room.image %}
+              <img src="{{ room.image.url }}" alt="{{ room.get_room_type_display }}" loading="lazy">
+            {% endif %}
+            <span class="deal-rating">{{ room.get_room_type_display }} · {{ room.capacity }} guests</span>
           </div>
           <div class="deal-content">
-            <span>Hotel · Staywise</span>
-            <h3>{{ room.get_room_type_display }} Room {{ room.room_number }}</h3>
+            <span>{{ room.residency.location }}</span>
+            <h3>{{ room.residency.residency_name }}</h3>
+            <p>{{ room.get_room_type_display }} room</p>
             <p>{{ room.amenity_list|slice:':2'|join:' · ' }}</p>
-            <strong>INR {{ room.price_per_night|floatformat:0 }} <small>per night</small></strong>
+            <strong>Price: INR {{ room.price_per_night|floatformat:0 }}</strong>
           </div>
         </article>
       {% empty %}
@@ -61,7 +67,7 @@
       {% for room in featured_rooms %}
         <a class="budget-card" href="{% url 'room_detail' room.pk %}">
           <div class="budget-image">
-            <span>Under<br /><strong>INR {{ room.price_per_night|floatformat:0 }}</strong></span>
+            <span>Price<br /><strong>INR {{ room.price_per_night|floatformat:0 }}</strong></span>
           </div>
           <h3>{{ room.get_room_type_display }} stays</h3>
           <p>Comfortable rooms for smart travellers</p>

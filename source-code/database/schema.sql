@@ -17,7 +17,11 @@ CREATE TABLE IF NOT EXISTS residency (
     residency_name VARCHAR(150) NOT NULL UNIQUE,
     provider_name VARCHAR(150) NOT NULL,
     location VARCHAR(200) NOT NULL,
+    address TEXT NOT NULL,
     description TEXT NOT NULL,
+    phone VARCHAR(30) NOT NULL,
+    email VARCHAR(254) NOT NULL,
+    main_image VARCHAR(255) NOT NULL,
     status VARCHAR(10) NOT NULL DEFAULT 'ACTIVE',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -26,14 +30,20 @@ CREATE TABLE IF NOT EXISTS residency (
 
 CREATE TABLE IF NOT EXISTS `admin` (
     admin_id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    residency_id BIGINT NOT NULL,
     username VARCHAR(150) NOT NULL UNIQUE,
     password_hash VARCHAR(128) NOT NULL,
     status VARCHAR(10) NOT NULL DEFAULT 'ACTIVE',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT admin_status_ck CHECK (status IN ('ACTIVE', 'INACTIVE')),
-    CONSTRAINT admin_residency_fk FOREIGN KEY (residency_id) REFERENCES residency(residency_id)
+    CONSTRAINT admin_status_ck CHECK (status IN ('ACTIVE', 'INACTIVE'))
+);
+
+CREATE TABLE IF NOT EXISTS admin_residencies (
+    admin_id BIGINT NOT NULL,
+    residency_id BIGINT NOT NULL,
+    PRIMARY KEY (admin_id, residency_id),
+    CONSTRAINT admin_residencies_admin_fk FOREIGN KEY (admin_id) REFERENCES `admin`(admin_id),
+    CONSTRAINT admin_residencies_residency_fk FOREIGN KEY (residency_id) REFERENCES residency(residency_id)
 );
 
 CREATE TABLE IF NOT EXISTS room_details (
@@ -55,6 +65,22 @@ CREATE TABLE IF NOT EXISTS room_details (
     CONSTRAINT room_status_ck CHECK (status IN ('AVAILABLE', 'MAINTENANCE', 'INACTIVE')),
     CONSTRAINT room_residency_fk FOREIGN KEY (residency_id) REFERENCES residency(residency_id),
     INDEX room_search_idx (residency_id, room_type, status)
+);
+
+CREATE TABLE IF NOT EXISTS gallery_image (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    residency_id BIGINT NULL,
+    room_id BIGINT NULL,
+    image VARCHAR(255) NOT NULL,
+    image_type VARCHAR(12) NOT NULL DEFAULT 'OTHER',
+    caption VARCHAR(150) NOT NULL DEFAULT '',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT gallery_image_one_parent_ck CHECK (
+        (residency_id IS NOT NULL AND room_id IS NULL)
+        OR (residency_id IS NULL AND room_id IS NOT NULL)
+    ),
+    CONSTRAINT gallery_image_residency_fk FOREIGN KEY (residency_id) REFERENCES residency(residency_id) ON DELETE CASCADE,
+    CONSTRAINT gallery_image_room_fk FOREIGN KEY (room_id) REFERENCES room_details(room_id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS booking_details (
@@ -81,13 +107,4 @@ CREATE TABLE IF NOT EXISTS booking_details (
     CONSTRAINT booking_room_fk FOREIGN KEY (room_id) REFERENCES room_details(room_id),
     INDEX booking_user_idx (user_id, created_at),
     INDEX booking_residency_idx (residency_id, booking_status)
-);
-
-CREATE TABLE IF NOT EXISTS admin_verification (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    code_hash VARCHAR(128) NOT NULL,
-    expires_at DATETIME NOT NULL,
-    attempts INT UNSIGNED NOT NULL DEFAULT 0,
-    used BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

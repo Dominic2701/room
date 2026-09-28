@@ -28,7 +28,10 @@
         <button class="nav-toggle" aria-label="Toggle navigation">Menu</button>
         <nav class="nav-links">
           <a href="{% url 'room_list' %}">Rooms</a>
-          {% if user.is_authenticated %}
+          {% if request.session.admin_account_id %}
+            <a href="{% url 'admin_dashboard' %}">Dashboard</a>
+            <a class="nav-quiet" href="{% url 'logout' %}">Sign out</a>
+          {% elif user.is_authenticated %}
             <a href="{% url 'my_bookings' %}">My stays</a>
             <a href="{% url 'profile' %}">Profile</a>
             {% if user.is_staff %}

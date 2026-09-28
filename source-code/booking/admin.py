@@ -1,21 +1,40 @@
 from django.contrib import admin
 
-from .models import AdminAccount, AdminVerificationCode, Booking, Payment, Profile, Residency, Room
+from .models import (
+    AdminAccount,
+    Booking,
+    GalleryImage,
+    Payment,
+    Profile,
+    Residency,
+    Room,
+)
 
 
 @admin.register(Residency)
 class ResidencyAdmin(admin.ModelAdmin):
-    list_display = ("residency_name", "provider_name", "location", "status")
+    list_display = (
+        "residency_name",
+        "provider_name",
+        "location",
+        "phone",
+        "email",
+        "status",
+    )
     list_filter = ("status",)
     search_fields = ("residency_name", "provider_name", "location")
 
 
 @admin.register(AdminAccount)
 class AdminAccountAdmin(admin.ModelAdmin):
-    list_display = ("username", "residency", "status", "created_at")
-    list_filter = ("status", "residency")
-    search_fields = ("username", "residency__residency_name")
+    list_display = ("username", "residency_list", "status", "created_at")
+    list_filter = ("status", "residencies")
+    search_fields = ("username", "residencies__residency_name")
     exclude = ("password_hash",)
+
+    @admin.display(description="Residencies")
+    def residency_list(self, obj):
+        return ", ".join(obj.residencies.values_list("residency_name", flat=True))
 
 
 @admin.register(Profile)
@@ -30,6 +49,12 @@ class RoomAdmin(admin.ModelAdmin):
     list_filter = ("room_type", "status", "floor")
     search_fields = ("room_id", "room_number", "amenities")
     ordering = ("room_number",)
+
+
+@admin.register(GalleryImage)
+class GalleryImageAdmin(admin.ModelAdmin):
+    list_display = ("image_type", "caption", "residency", "room", "created_at")
+    list_filter = ("image_type",)
 
 
 @admin.register(Booking)
@@ -65,9 +90,3 @@ class PaymentAdmin(admin.ModelAdmin):
     )
     list_filter = ("payment_method", "payment_status")
     search_fields = ("payment_id", "transaction_id", "booking__booking_id")
-
-
-@admin.register(AdminVerificationCode)
-class AdminVerificationCodeAdmin(admin.ModelAdmin):
-    list_display = ("created_at", "expires_at", "attempts", "used")
-    readonly_fields = ("code_hash", "created_at")

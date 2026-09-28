@@ -1,4 +1,5 @@
 from io import BytesIO
+
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
@@ -6,6 +7,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.hashers import check_password, make_password
 from django.contrib.auth.models import User
 from django.db import transaction
+from django.db.models import Q
 from django.db.models import Sum
 from django.core.exceptions import PermissionDenied
 from django.http import FileResponse, Http404
@@ -17,16 +19,60 @@ from reportlab.lib.units import mm
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 from reportlab.lib import colors
 
-from .forms import BookingForm, ProfileForm, RegistrationForm, RoomFilterForm, RoomForm
-from .models import AdminAccount, Booking, Payment, Profile, Residency, Room
+from .forms import (
+    BookingForm,
+    GalleryUploadForm,
+    ProfileForm,
+    RegistrationForm,
+    ResidencyForm,
+    RoomFilterForm,
+    RoomForm,
+)
+from .models import AdminAccount, Booking, GalleryImage, Payment, Profile, Residency, Room
+
+
+def staff_required(view):
+    def wrapped(request, *args, **kwargs):
+        admin_id = request.session.get("admin_account_id")
+        admin = AdminAccount.objects.filter(
+            pk=admin_id, status=AdminAccount.Status.ACTIVE
+        ).first()
+        if not admin or not admin.residencies.exists():
+            raise PermissionDenied
+        request.admin_account = admin
+        return view(request, *args, **kwargs)
+
+    return wrapped
+
+
+def _public_rooms():
+    managed_residencies = Residency.objects.filter(
+        status=Residency.Status.ACTIVE,
+        admins__status=AdminAccount.Status.ACTIVE,
+    ).values("pk")
+    return Room.objects.filter(
+        status=Room.Status.AVAILABLE,
+        residency__status=Residency.Status.ACTIVE,
+        residency_id__in=managed_residencies,
+    )
 
 
 def home(request):
-    featured_rooms = Room.objects.filter(
-        status=Room.Status.AVAILABLE, available_rooms__gt=0,
-        residency__status=Residency.Status.ACTIVE,
-    ).select_related("residency")[:3]
-    return render(request, "home.html", {"featured_rooms": featured_rooms})
+    available_rooms = _public_rooms().filter(available_rooms__gt=0)
+    featured_rooms = available_rooms.select_related(
+        "residency"
+    ).order_by("-residency__created_at")[:3]
+    available_room_count = available_rooms.aggregate(
+        total=Sum("available_rooms")
+    )["total"] or 0
+    return render(
+        request,
+        "home.html",
+        {
+            "featured_rooms": featured_rooms,
+            "available_room_count": available_room_count,
+        },
+    )
 
 
 def register_view(request):
@@ -66,7 +112,7 @@ def admin_login(request):
         admin = AdminAccount.objects.filter(
             username=username, status=AdminAccount.Status.ACTIVE
         ).first()
-        if admin and check_password(password, admin.password_hash):
+        if admin and admin.verify_password(password):
             request.session.cycle_key()
             request.session["admin_account_id"] = admin.pk
             messages.success(request, "Admin login successful.")
@@ -85,7 +131,7 @@ def admin_register(request):
             if not settings.DEVELOPER_PASSWORD_HASH:
                 messages.error(
                     request,
-                    "Developer verification is not configured. Generate DEVELOPER_PASSWORD_HASH in source-code/.env first.",
+                    "Developer verification is not configured. Run set_developer_password first.",
                 )
             elif (
                 email == settings.DEVELOPER_EMAIL.lower()
@@ -95,7 +141,7 @@ def admin_register(request):
                 verified = True
                 messages.success(request, "Developer verification successful.")
             else:
-                messages.error(request, "Developer verification failed.")
+                messages.error(request, "Invalid developer credentials.")
         elif action == "create" and verified:
             residency_name = request.POST.get("residency_name", "").strip()
             provider_name = request.POST.get("provider_name", "").strip()
@@ -114,19 +160,164 @@ def admin_register(request):
                     residency_name=residency_name,
                     defaults={"provider_name": provider_name, "location": location},
                 )
-                AdminAccount.objects.create(
-                    residency=residency,
+                admin = AdminAccount.objects.create(
                     username=username,
                     password_hash=make_password(password),
                 )
+                admin.residencies.add(residency)
                 request.session.pop("developer_verified", None)
-                messages.success(request, "Admin registration successful.")
+                messages.success(request, "Admin account created successfully.")
                 return redirect("admin_login")
     return render(request, "admin_setup.html", {"verified": verified})
 
 
 def admin_setup(request):
     return redirect("admin_register")
+
+
+@staff_required
+def admin_residencies(request):
+    residencies = request.admin_account.residencies.all().prefetch_related(
+        "rooms", "gallery_images"
+    )
+    return render(
+        request, "admin/residencies.html", {"residencies": residencies}
+    )
+
+
+@staff_required
+def admin_residency_add(request):
+    form = ResidencyForm(request.POST or None, request.FILES or None)
+    if request.method == "POST" and form.is_valid():
+        residency = form.save()
+        request.admin_account.residencies.add(residency)
+        messages.success(request, "Residency created successfully.")
+        return redirect("admin_residencies")
+    return render(
+        request,
+        "admin/residency_form.html",
+        {"form": form, "title": "Add residency"},
+    )
+
+
+@staff_required
+def admin_residency_edit(request, pk):
+    residency = get_object_or_404(
+        request.admin_account.residencies.all(), pk=pk
+    )
+    form = ResidencyForm(
+        request.POST or None, request.FILES or None, instance=residency
+    )
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, "Residency updated successfully.")
+        return redirect("admin_residencies")
+    return render(
+        request,
+        "admin/residency_form.html",
+        {"form": form, "title": "Edit residency", "residency": residency},
+    )
+
+
+@staff_required
+def admin_residency_delete(request, pk):
+    residency = get_object_or_404(
+        request.admin_account.residencies.all(), pk=pk
+    )
+    if request.method == "POST":
+        residency.status = Residency.Status.INACTIVE
+        residency.save(update_fields=["status", "updated_at"])
+        messages.success(request, "Residency has been deactivated.")
+    return redirect("admin_residencies")
+
+
+def _manage_gallery(request, *, parent, parent_kind):
+    upload_form = GalleryUploadForm(request.POST or None, request.FILES or None)
+    if request.method == "POST" and upload_form.is_valid():
+        for image in upload_form.cleaned_data["images"]:
+            GalleryImage.objects.create(
+                **{parent_kind: parent},
+                image=image,
+                image_type=upload_form.cleaned_data["image_type"],
+                caption=upload_form.cleaned_data["caption"],
+            )
+        messages.success(request, "Gallery images uploaded.")
+        return redirect(request.path)
+
+    return render(
+        request,
+        "admin/images.html",
+        {
+            "parent": parent,
+            "parent_kind": parent_kind,
+            "main_image": getattr(parent, "main_image", None)
+            or getattr(parent, "image", None),
+            "gallery_images": parent.gallery_images.all(),
+            "upload_form": upload_form,
+        },
+    )
+
+
+@staff_required
+def admin_residency_images(request, pk):
+    residency = get_object_or_404(
+        request.admin_account.residencies.all(), pk=pk
+    )
+    return _manage_gallery(request, parent=residency, parent_kind="residency")
+
+
+@staff_required
+def admin_room_images(request, pk):
+    room = get_object_or_404(
+        Room.objects.filter(residency__in=request.admin_account.residencies.all()),
+        pk=pk,
+    )
+    return _manage_gallery(request, parent=room, parent_kind="room")
+
+
+@staff_required
+def admin_gallery_image_delete(request, image_id):
+    image = get_object_or_404(
+        GalleryImage.objects.filter(
+            Q(residency__in=request.admin_account.residencies.all())
+            | Q(room__residency__in=request.admin_account.residencies.all())
+        ),
+        pk=image_id,
+    )
+    parent = image.residency or image.room
+    parent_url = (
+        "admin_residency_images"
+        if image.residency_id
+        else "admin_room_images"
+    )
+    if request.method == "POST":
+        image.image.delete(save=False)
+        image.delete()
+        messages.success(request, "Gallery image deleted.")
+    return redirect(parent_url, pk=parent.pk)
+
+
+@staff_required
+def admin_main_image_delete(request, parent_kind, pk):
+    if parent_kind == "residency":
+        parent = get_object_or_404(
+            request.admin_account.residencies.all(), pk=pk
+        )
+        image_field = parent.main_image
+        redirect_name = "admin_residency_images"
+    elif parent_kind == "room":
+        parent = get_object_or_404(
+            Room.objects.filter(residency__in=request.admin_account.residencies.all()),
+            pk=pk,
+        )
+        image_field = parent.image
+        redirect_name = "admin_room_images"
+    else:
+        raise Http404
+    if request.method == "POST" and image_field:
+        image_field.delete(save=True)
+        messages.success(request, "Main image deleted.")
+    return redirect(redirect_name, pk=pk)
 
 
 def logout_view(request):
@@ -139,10 +330,7 @@ def logout_view(request):
 
 def room_list(request):
     form = RoomFilterForm(request.GET or None)
-    rooms = Room.objects.filter(
-        status=Room.Status.AVAILABLE,
-        residency__status=Residency.Status.ACTIVE,
-    ).select_related("residency")
+    rooms = _public_rooms().select_related("residency")
     if form.is_valid():
         data = form.cleaned_data
         if data.get("residency"):
@@ -165,17 +353,38 @@ def room_list(request):
                 check_out__gt=data["check_in"],
             ).values_list("room_id", flat=True)
             rooms = rooms.exclude(id__in=blocked)
-    return render(request, "rooms.html", {"rooms": rooms, "form": form})
+    residencies_without_rooms = (
+        Residency.objects.filter(
+            status=Residency.Status.ACTIVE,
+            admins__status=AdminAccount.Status.ACTIVE,
+        )
+        .exclude(rooms__status=Room.Status.AVAILABLE)
+        .distinct()
+    )
+    return render(
+        request,
+        "rooms.html",
+        {
+            "rooms": rooms,
+            "form": form,
+            "residencies_without_rooms": residencies_without_rooms,
+        },
+    )
 
 
 def room_detail(request, pk):
-    room = get_object_or_404(Room, pk=pk)
+    room = get_object_or_404(
+        _public_rooms().select_related("residency").prefetch_related(
+            "gallery_images", "residency__gallery_images"
+        ),
+        pk=pk,
+    )
     return render(request, "room_detail.html", {"room": room})
 
 
 @login_required
 def book_room(request, room_id):
-    room = get_object_or_404(Room, pk=room_id)
+    room = get_object_or_404(_public_rooms(), pk=room_id)
     form = BookingForm(request.POST or None, room=room)
     if request.method == "POST" and form.is_valid():
         requested = form.cleaned_data["number_of_rooms"]
@@ -209,7 +418,7 @@ def book_room(request, room_id):
 def _owned_booking(request, pk):
     booking = get_object_or_404(Booking.objects.select_related("room", "user"), pk=pk)
     admin = getattr(request, "admin_account", None)
-    if admin and booking.residency_id != admin.residency_id:
+    if admin and not admin.residencies.filter(pk=booking.residency_id).exists():
         raise Http404
     if not admin and booking.user_id != request.user.id:
         raise Http404
@@ -353,27 +562,14 @@ def profile(request):
     return render(request, "profile.html", {"form": form})
 
 
-def staff_required(view):
-    def wrapped(request, *args, **kwargs):
-        admin_id = request.session.get("admin_account_id")
-        admin = AdminAccount.objects.filter(
-            pk=admin_id, status=AdminAccount.Status.ACTIVE
-        ).select_related("residency").first()
-        if not admin:
-            raise PermissionDenied
-        request.admin_account = admin
-        return view(request, *args, **kwargs)
-
-    return wrapped
-
-
 @staff_required
 def admin_dashboard(request):
-    residency = request.admin_account.residency
-    rooms = Room.objects.filter(residency=residency)
-    bookings = Booking.objects.filter(residency=residency)
+    residencies = request.admin_account.residencies.all()
+    rooms = Room.objects.filter(residency__in=residencies)
+    bookings = Booking.objects.filter(residency__in=residencies)
     context = {
-        "residency": residency,
+        "residency": residencies.first(),
+        "residencies": residencies,
         "user_count": bookings.values("user_id").distinct().count(),
         "room_count": rooms.count(),
         "total_rooms": rooms.aggregate(total=Sum("total_rooms"))["total"] or 0,
@@ -404,15 +600,22 @@ def admin_rooms(request):
     return render(
         request,
         "admin/rooms.html",
-        {"rooms": Room.objects.filter(residency=request.admin_account.residency)},
+        {
+            "rooms": Room.objects.filter(
+                residency__in=request.admin_account.residencies.all()
+            ).select_related("residency")
+        },
     )
 
 
 @staff_required
 def admin_room_add(request):
-    form = RoomForm(request.POST or None, request.FILES or None)
+    form = RoomForm(
+        request.POST or None,
+        request.FILES or None,
+        admin_account=request.admin_account,
+    )
     if request.method == "POST" and form.is_valid():
-        form.instance.residency = request.admin_account.residency
         form.save()
         messages.success(request, "Room added.")
         return redirect("admin_rooms")
@@ -422,9 +625,14 @@ def admin_room_add(request):
 @staff_required
 def admin_room_edit(request, pk):
     room = get_object_or_404(
-        Room, pk=pk, residency=request.admin_account.residency
+        Room, pk=pk, residency__in=request.admin_account.residencies.all()
     )
-    form = RoomForm(request.POST or None, request.FILES or None, instance=room)
+    form = RoomForm(
+        request.POST or None,
+        request.FILES or None,
+        instance=room,
+        admin_account=request.admin_account,
+    )
     if request.method == "POST" and form.is_valid():
         form.save()
         messages.success(request, "Room updated.")
@@ -439,7 +647,7 @@ def admin_room_edit(request, pk):
 @staff_required
 def admin_room_delete(request, pk):
     room = get_object_or_404(
-        Room, pk=pk, residency=request.admin_account.residency
+        Room, pk=pk, residency__in=request.admin_account.residencies.all()
     )
     if request.method == "POST":
         room.status = Room.Status.INACTIVE
@@ -451,7 +659,7 @@ def admin_room_delete(request, pk):
 @staff_required
 def admin_bookings(request):
     bookings = Booking.objects.filter(
-        residency=request.admin_account.residency
+        residency__in=request.admin_account.residencies.all()
     ).select_related("user", "room")
     return render(request, "admin/bookings.html", {"bookings": bookings})
 
@@ -459,7 +667,7 @@ def admin_bookings(request):
 @staff_required
 def admin_booking_action(request, pk, action):
     booking = get_object_or_404(
-        Booking, pk=pk, residency=request.admin_account.residency
+        Booking, pk=pk, residency__in=request.admin_account.residencies.all()
     )
     transitions = {
         "confirm": Booking.Status.CONFIRMED,
@@ -497,7 +705,7 @@ def admin_booking_action(request, pk, action):
 @staff_required
 def admin_users(request):
     user_ids = Booking.objects.filter(
-        residency=request.admin_account.residency
+        residency__in=request.admin_account.residencies.all()
     ).values("user_id")
     return render(
         request,
@@ -509,7 +717,7 @@ def admin_users(request):
 @staff_required
 def admin_payments(request):
     booking_ids = Booking.objects.filter(
-        residency=request.admin_account.residency
+        residency__in=request.admin_account.residencies.all()
     ).values("pk")
     return render(
         request,

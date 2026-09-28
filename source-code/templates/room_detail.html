@@ -9,8 +9,12 @@
     <div class="detail-image
       {% if room.room_type == 'SUITE' %}image-suite{% endif %}
       {% if room.room_type == 'DELUXE' %}image-deluxe{% endif %}">
+      {% if room.image %}
+        <img src="{{ room.image.url }}" alt="{{ room.residency.residency_name }} {{ room.get_room_type_display }}">
+      {% elif room.residency.main_image %}
+        <img src="{{ room.residency.main_image.url }}" alt="{{ room.residency.residency_name }}">
+      {% endif %}
       <span class="room-type">{{ room.get_room_type_display }}</span>
-      <span class="detail-room-no">{{ room.room_number }}</span>
     </div>
 
     <div class="detail-copy">
@@ -25,9 +29,12 @@
 
       <div class="detail-price">
         <strong>INR {{ room.price_per_night|floatformat:0 }}</strong>
-        <span>per night · up to {{ room.capacity }} guests</span>
+        <span>Price · up to {{ room.capacity }} guests</span>
       </div>
       <p>Provider: {{ room.residency.provider_name }}</p>
+      {% if room.residency.address %}<p>{{ room.residency.address }}</p>{% endif %}
+      {% if room.residency.phone %}<p>Phone: {{ room.residency.phone }}</p>{% endif %}
+      {% if room.residency.email %}<p>Email: {{ room.residency.email }}</p>{% endif %}
 
       <div class="amenities">
         {% for amenity in room.amenity_list %}
@@ -46,4 +53,29 @@
       {% endif %}
     </div>
   </section>
+  {% with images=room.residency.gallery_images.all %}
+    {% if images or room.residency.main_image %}
+      <section class="wrap gallery-section">
+        <h2>Residency photos</h2>
+        <div class="gallery-grid">
+          {% if room.residency.main_image %}
+            <figure><img src="{{ room.residency.main_image.url }}" alt="{{ room.residency.residency_name }}" loading="lazy"><figcaption>{{ room.residency.residency_name }}</figcaption></figure>
+          {% endif %}
+          {% for image in images %}
+            <figure><img src="{{ image.image.url }}" alt="{{ image.caption|default:image.get_image_type_display }}" loading="lazy"><figcaption>{{ image.caption|default:image.get_image_type_display }}</figcaption></figure>
+          {% endfor %}
+        </div>
+      </section>
+    {% endif %}
+  {% endwith %}
+  {% if room.gallery_images.all %}
+    <section class="wrap gallery-section">
+      <h2>Room photos</h2>
+      <div class="gallery-grid">
+        {% for image in room.gallery_images.all %}
+          <figure><img src="{{ image.image.url }}" alt="{{ image.caption|default:image.get_image_type_display }}" loading="lazy"><figcaption>{{ image.caption|default:image.get_image_type_display }}</figcaption></figure>
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
 {% endblock %}

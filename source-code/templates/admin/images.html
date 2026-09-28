@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% block title %}Manage images{% endblock %}
+{% block content %}
+<section class="wrap admin-header">
+  <div><p class="eyebrow">Operations / image management</p><h1>{{ parent }} <em>photos.</em></h1></div>
+</section>
+<section class="wrap admin-grid">
+  <div class="admin-card">
+    <h2>Main image</h2>
+    {% if main_image %}
+      <img class="managed-main-image" src="{{ main_image.url }}" alt="{{ parent }}">
+      <form method="post" action="{% url 'admin_main_image_delete' parent_kind parent.pk %}">
+        {% csrf_token %}<button type="submit">Delete main image</button>
+      </form>
+    {% else %}<p>No main image uploaded.</p>{% endif %}
+    {% if parent_kind == 'residency' %}
+      <p><a href="{% url 'admin_residency_edit' parent.pk %}">Replace main image</a></p>
+    {% else %}
+      <p><a href="{% url 'admin_room_edit' parent.pk %}">Replace main image</a></p>
+    {% endif %}
+  </div>
+  <div class="admin-card">
+    <h2>Upload gallery images</h2>
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      {% for field in upload_form %}
+        <label>{{ field.label }}{{ field }}{% if field.errors %}<span class="field-error">{{ field.errors|striptags }}</span>{% endif %}</label>
+      {% endfor %}
+      <button class="button" type="submit">Upload images</button>
+    </form>
+  </div>
+</section>
+<section class="wrap gallery-section">
+  <h2>Gallery</h2>
+  <div class="gallery-grid">
+    {% for image in gallery_images %}
+      <figure>
+        <img src="{{ image.image.url }}" alt="{{ image.caption|default:image.get_image_type_display }}">
+        <figcaption>{{ image.caption|default:image.get_image_type_display }}</figcaption>
+        <form method="post" action="{% url 'admin_gallery_image_delete' image.pk %}">
+          {% csrf_token %}<button type="submit">Delete</button>
+        </form>
+      </figure>
+    {% empty %}<p>No gallery images uploaded.</p>{% endfor %}
+  </div>
+</section>
+{% endblock %}

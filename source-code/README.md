@@ -19,14 +19,12 @@ Python, Django, Django ORM, MySQL, SQLite for local fallback, ReportLab, Pillow,
 ## Setup
 
 ```powershell
-python -m venv venv
-venv\Scripts\activate
-pip install -r requirements.txt
-Copy-Item .env.example .env
+Set-Location "C:\gen ai\room_booking"
+.\.venv\Scripts\Activate.ps1
+Set-Location .\source-code
+python -m pip install -r requirements.txt
 python manage.py migrate
-python manage.py seed_rooms
-python manage.py createsuperuser
-python manage.py runserver
+python manage.py runserver 127.0.0.1:8000
 ```
 
 Open `http://127.0.0.1:8000/`. The custom staff dashboard is at `/admin-dashboard/`; Django admin is at `/django-admin/`.
@@ -40,6 +38,10 @@ CREATE DATABASE room_booking_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
 ```
 
 Set `DB_ENGINE=mysql`, then update `DB_USER`, `DB_PASSWORD`, `DB_HOST`, and `DB_PORT` in `.env`. Never commit `.env` or real credentials.
+
+For admin registration, set `DEVELOPER_EMAIL` in the ignored local `.env`, then run `python manage.py set_developer_password` to configure the developer password. The command stores a Django password hash in `DEVELOPER_PASSWORD_HASH`; verification runs server-side. Admin and customer passwords are also securely hashed and are never stored in plain text.
+
+Each admin account can manage one or more residencies. Use **Residencies** in the staff dashboard to add/edit properties, upload a main image, and manage categorized gallery photos. Room forms support a main image and multiple gallery images. Uploaded files are stored under `media/`; `MEDIA_URL` is served during development.
 
 ## Sample rooms
 

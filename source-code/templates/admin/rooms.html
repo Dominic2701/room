@@ -13,21 +13,23 @@
 <section class="wrap table-section">
   <div class="booking-table">
     <div class="booking-row booking-head">
-      <span>Room</span><span>Type</span><span>Rate</span><span>Inventory</span
+      <span>Residency</span><span>Type</span><span>Rate</span><span>Inventory</span
       ><span>Status</span><span>Actions</span>
     </div>
     {% for room in rooms %}
     <div class="booking-row">
-      <span
-        ><strong>{{ room.room_number }}</strong
-        ><small>{{ room.room_id }}</small></span
-      ><span>{{ room.get_room_type_display }}</span
+      <span>
+        <strong>{{ room.residency.residency_name }}</strong>
+        <small>Room {{ room.room_number }} · {{ room.room_id }}</small>
+      </span>
+      <span>{{ room.get_room_type_display }}</span
       ><span>INR {{ room.price_per_night|floatformat:0 }}</span
       ><span>{{ room.available_rooms }} / {{ room.total_rooms }} available</span
       ><span class="status status-{{ room.status|lower }}"
         >{{ room.get_status_display }}</span
       ><span class="row-actions"
         ><a href="{% url 'admin_room_edit' room.pk %}">Edit</a>
+        <a href="{% url 'admin_room_images' room.pk %}">Images</a>
         <form method="post" action="{% url 'admin_room_delete' room.pk %}">
           {% csrf_token %}<button type="submit">Deactivate</button>
         </form></span

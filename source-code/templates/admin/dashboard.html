@@ -4,11 +4,20 @@
 <section class="wrap admin-header">
   <div>
     <p class="eyebrow">Operations</p>
-    <h1>{{ residency.residency_name }}<br /><em>dashboard.</em></h1>
+    <h1>Operations<br /><em>dashboard.</em></h1>
   </div>
-  <a class="button button-small" href="{% url 'admin_room_add' %}"
-    >Add a room <span>+</span></a
-  >
+  <div class="row-actions">
+    <a class="button button-small" href="{% url 'admin_residency_add' %}">Add residency +</a>
+    <a class="button button-small" href="{% url 'admin_room_add' %}">Add room +</a>
+  </div>
+</section>
+<section class="wrap admin-card">
+  <div class="card-heading"><h2>Residencies</h2><a href="{% url 'admin_residencies' %}">Manage residencies →</a></div>
+  <div class="residency-admin-grid">
+    {% for item in residencies %}
+      <article><h3>{{ item.residency_name }}</h3><p>{{ item.location }}</p><a href="{% url 'admin_residency_edit' item.pk %}">Edit</a> · <a href="{% url 'admin_residency_images' item.pk %}">Manage images</a></article>
+    {% empty %}<p>No residencies yet.</p>{% endfor %}
+  </div>
 </section>
 <section class="wrap stats-grid">
   <div class="stat"><span>Users</span><strong>{{ user_count }}</strong></div>

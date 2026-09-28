@@ -20,6 +20,31 @@ urlpatterns = [
     path("booking/<int:pk>/receipt/", views.booking_receipt, name="booking_receipt"),
     path("profile/", views.profile, name="profile"),
     path("admin-dashboard/", views.admin_dashboard, name="admin_dashboard"),
+    path(
+        "admin-dashboard/residencies/",
+        views.admin_residencies,
+        name="admin_residencies",
+    ),
+    path(
+        "admin-dashboard/residencies/add/",
+        views.admin_residency_add,
+        name="admin_residency_add",
+    ),
+    path(
+        "admin-dashboard/residencies/<int:pk>/edit/",
+        views.admin_residency_edit,
+        name="admin_residency_edit",
+    ),
+    path(
+        "admin-dashboard/residencies/<int:pk>/deactivate/",
+        views.admin_residency_delete,
+        name="admin_residency_delete",
+    ),
+    path(
+        "admin-dashboard/residencies/<int:pk>/images/",
+        views.admin_residency_images,
+        name="admin_residency_images",
+    ),
     path("admin-dashboard/rooms/", views.admin_rooms, name="admin_rooms"),
     path("admin-dashboard/rooms/add/", views.admin_room_add, name="admin_room_add"),
     path(
@@ -31,6 +56,21 @@ urlpatterns = [
         "admin-dashboard/rooms/<int:pk>/delete/",
         views.admin_room_delete,
         name="admin_room_delete",
+    ),
+    path(
+        "admin-dashboard/rooms/<int:pk>/images/",
+        views.admin_room_images,
+        name="admin_room_images",
+    ),
+    path(
+        "admin-dashboard/images/<int:image_id>/delete/",
+        views.admin_gallery_image_delete,
+        name="admin_gallery_image_delete",
+    ),
+    path(
+        "admin-dashboard/<str:parent_kind>/<int:pk>/delete-main-image/",
+        views.admin_main_image_delete,
+        name="admin_main_image_delete",
     ),
     path("admin-dashboard/bookings/", views.admin_bookings, name="admin_bookings"),
     path(

@@ -36,7 +36,7 @@
       </div>
 
       <div class="filter-links">
-        <button type="button">Price per night <span>⌄</span></button>
+        <button type="button">Price <span>⌄</span></button>
         <button type="button">Customer rating <span>⌄</span></button>
         <button type="button">Amenities <span>⌄</span></button>
         <button type="button">Room policies <span>⌄</span></button>
@@ -45,7 +45,7 @@
 
     <main class="results-content">
       <div class="results-count-row">
-        <strong>{{ rooms|length }} rooms found</strong>
+        <strong>{{ rooms|length }} stays found</strong>
         <div class="sort-links"><span>Sort by:</span> <b>Popularity ↓</b> <span>Ratings</span> <span>Price</span></div>
       </div>
 
@@ -54,17 +54,23 @@
         <button type="button">⌾ Use precise location</button>
       </div>
 
-      <h1 class="results-heading">Showing available rooms</h1>
+      <h1 class="results-heading">Residencies and available rooms</h1>
 
       <div class="property-list">
         {% for room in rooms %}
           <article class="property-card">
             <div class="property-image property-image-{{ forloop.counter }}">
-              <span class="property-rating">★ 4.{{ forloop.counter }} &nbsp; {{ room.capacity }} guests</span>
+              {% if room.residency.main_image %}
+                <img src="{{ room.residency.main_image.url }}" alt="{{ room.residency.residency_name }}" loading="lazy">
+              {% elif room.image %}
+                <img src="{{ room.image.url }}" alt="{{ room.get_room_type_display }}" loading="lazy">
+              {% endif %}
+              <span class="property-rating">{{ room.get_room_type_display }} · {{ room.capacity }} guests</span>
             </div>
             <div class="property-info">
-              <div class="property-topline">{{ room.residency.residency_name }} · {{ room.residency.location }}</div>
-              <h2>{{ room.get_room_type_display }} Room {{ room.room_number }}</h2>
+              <div class="property-topline">{{ room.residency.location }}</div>
+              <h2>{{ room.residency.residency_name }}</h2>
+              <p class="property-room-type">{{ room.get_room_type_display }} room</p>
               <p class="property-meta">{{ room.amenity_list|slice:':3'|join:' · ' }}</p>
               <div class="property-tags"><span>{% if room.available_rooms %}Available: {{ room.available_rooms }} / {{ room.total_rooms }}{% else %}Sold Out{% endif %}</span><span>{{ room.capacity }} guests</span></div>
             </div>
@@ -72,7 +78,7 @@
               <span class="deal-label">Great value</span>
               <del>INR {{ room.price_per_night|add:1000|floatformat:0 }}</del>
               <strong>INR {{ room.price_per_night|floatformat:0 }}</strong>
-              <small>Per night</small>
+              <small>Price</small>
               {% if room.available_rooms %}<a class="select-room-button" href="{% url 'room_detail' room.pk %}">Select room</a>{% else %}<span class="select-room-button" aria-disabled="true">Sold Out</span>{% endif %}
             </div>
           </article>
@@ -80,6 +86,24 @@
           <div class="empty-state"><h3>No rooms match your search.</h3><p>Try changing the dates or removing a filter.</p></div>
         {% endfor %}
       </div>
+      {% if residencies_without_rooms %}
+        <section class="property-list unavailable-residencies">
+          <h2>More residencies</h2>
+          {% for residency in residencies_without_rooms %}
+            <article class="property-card">
+              <div class="property-image">
+                {% if residency.main_image %}<img src="{{ residency.main_image.url }}" alt="{{ residency.residency_name }}" loading="lazy">{% endif %}
+              </div>
+              <div class="property-info">
+                <div class="property-topline">{{ residency.location }}</div>
+                <h2>{{ residency.residency_name }}</h2>
+                {% if residency.description %}<p>{{ residency.description|truncatewords:24 }}</p>{% endif %}
+                <span class="property-tags">No rooms currently available</span>
+              </div>
+            </article>
+          {% endfor %}
+        </section>
+      {% endif %}
     </main>
   </div>
 </section>

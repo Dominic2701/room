@@ -1,7 +1,9 @@
+import secrets
 from decimal import Decimal
 from uuid import uuid4
 
 from django.contrib.auth.models import User
+from django.contrib.auth.hashers import check_password, identify_hasher, make_password
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.utils import timezone
@@ -25,7 +27,11 @@ class Residency(models.Model):
     residency_name = models.CharField(max_length=150, unique=True)
     provider_name = models.CharField(max_length=150)
     location = models.CharField(max_length=200)
+    address = models.TextField(blank=True)
     description = models.TextField(blank=True)
+    phone = models.CharField(max_length=30, blank=True)
+    email = models.EmailField(blank=True)
+    main_image = models.ImageField(upload_to="residencies/", blank=True, null=True)
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.ACTIVE)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -43,8 +49,8 @@ class AdminAccount(models.Model):
         ACTIVE = "ACTIVE", "Active"
         INACTIVE = "INACTIVE", "Inactive"
 
-    residency = models.ForeignKey(
-        Residency, on_delete=models.PROTECT, related_name="admins"
+    residencies = models.ManyToManyField(
+        Residency, related_name="admins", blank=True
     )
     username = models.CharField(max_length=150, unique=True)
     password_hash = models.CharField(max_length=128)
@@ -54,6 +60,20 @@ class AdminAccount(models.Model):
 
     class Meta:
         db_table = "admin"
+
+    def set_password(self, raw_password):
+        self.password_hash = make_password(raw_password)
+
+    def verify_password(self, candidate_password):
+        try:
+            identify_hasher(self.password_hash)
+        except ValueError:
+            if not secrets.compare_digest(self.password_hash, candidate_password):
+                return False
+            self.set_password(candidate_password)
+            self.save(update_fields=["password_hash", "updated_at"])
+            return True
+        return check_password(candidate_password, self.password_hash)
 
     def __str__(self):
         return self.username
@@ -127,6 +147,53 @@ class Room(models.Model):
 
     def __str__(self):
         return f"Room {self.room_number} - {self.get_room_type_display()}"
+
+
+class GalleryImage(models.Model):
+    class ImageType(models.TextChoices):
+        ROOM = "ROOM", "Room"
+        BEDROOM = "BEDROOM", "Bedroom"
+        BATHROOM = "BATHROOM", "Bathroom"
+        PARKING = "PARKING", "Parking"
+        RECEPTION = "RECEPTION", "Reception"
+        DINING = "DINING", "Dining area"
+        LOBBY = "LOBBY", "Lobby"
+        EXTERIOR = "EXTERIOR", "Exterior"
+        AMENITIES = "AMENITIES", "Amenities"
+        OTHER = "OTHER", "Other"
+
+    residency = models.ForeignKey(
+        Residency,
+        on_delete=models.CASCADE,
+        related_name="gallery_images",
+        blank=True,
+        null=True,
+    )
+    room = models.ForeignKey(
+        Room,
+        on_delete=models.CASCADE,
+        related_name="gallery_images",
+        blank=True,
+        null=True,
+    )
+    image = models.ImageField(upload_to="gallery/")
+    image_type = models.CharField(
+        max_length=12, choices=ImageType.choices, default=ImageType.OTHER
+    )
+    caption = models.CharField(max_length=150, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(residency__isnull=False, room__isnull=True)
+                    | models.Q(residency__isnull=True, room__isnull=False)
+                ),
+                name="gallery_image_has_one_parent",
+            )
+        ]
 
 
 class Booking(models.Model):
@@ -225,15 +292,3 @@ class Payment(models.Model):
 
     def __str__(self):
         return self.payment_id
-
-
-class AdminVerificationCode(models.Model):
-    code_hash = models.CharField(max_length=128)
-    expires_at = models.DateTimeField()
-    attempts = models.PositiveIntegerField(default=0)
-    used = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        db_table = "admin_verification"
-        ordering = ["-created_at"]

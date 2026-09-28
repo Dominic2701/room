@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block title %}Manage residencies{% endblock %}
+{% block content %}
+<section class="wrap admin-header">
+  <div><p class="eyebrow">Operations / properties</p><h1>Residency <em>management.</em></h1></div>
+  <a class="button button-small" href="{% url 'admin_residency_add' %}">Add residency +</a>
+</section>
+<section class="wrap residency-admin-grid">
+  {% for residency in residencies %}
+    <article class="admin-card residency-admin-card">
+      {% if residency.main_image %}<img src="{{ residency.main_image.url }}" alt="{{ residency.residency_name }}">{% endif %}
+      <h2>{{ residency.residency_name }}</h2>
+      <p>{{ residency.location }}</p>
+      <p>{{ residency.rooms.count }} rooms · {{ residency.get_status_display }}</p>
+      <div class="row-actions">
+        <a href="{% url 'admin_residency_edit' residency.pk %}">Edit</a>
+        <a href="{% url 'admin_residency_images' residency.pk %}">Manage images</a>
+        <a href="{% url 'admin_rooms' %}">Manage rooms</a>
+        <form method="post" action="{% url 'admin_residency_delete' residency.pk %}">
+          {% csrf_token %}<button type="submit">Deactivate</button>
+        </form>
+      </div>
+    </article>
+  {% empty %}<p class="empty-state">No residencies yet.</p>{% endfor %}
+</section>
+{% endblock %}

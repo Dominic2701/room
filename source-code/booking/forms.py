@@ -1,9 +1,80 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
+from django.db.models import Sum
 from django.utils import timezone
 
-from .models import Booking, Payment, Profile, Room
+from .models import (
+    Booking,
+    GalleryImage,
+    Payment,
+    Profile,
+    Residency,
+    Room,
+)
+
+
+class MultipleImageInput(forms.ClearableFileInput):
+    allow_multiple_selected = True
+
+
+class MultipleImageField(forms.FileField):
+    widget = MultipleImageInput
+
+    def clean(self, data, initial=None):
+        if not data:
+            return []
+        files = data if isinstance(data, (list, tuple)) else [data]
+        image_field = forms.ImageField()
+        return [image_field.clean(image) for image in files]
+
+
+class ResidencyForm(forms.ModelForm):
+    gallery_images = MultipleImageField(required=False, label="Gallery images")
+
+    class Meta:
+        model = Residency
+        fields = (
+            "residency_name",
+            "location",
+            "address",
+            "provider_name",
+            "description",
+            "phone",
+            "email",
+            "main_image",
+            "status",
+        )
+        widgets = {
+            "description": forms.Textarea(attrs={"rows": 4}),
+            "address": forms.Textarea(attrs={"rows": 2}),
+        }
+
+    def save(self, commit=True):
+        previous_storage = self.instance.main_image.storage
+        previous_image = (
+            self.instance.main_image.name
+            if self.instance.pk and self.instance.main_image
+            else None
+        )
+        residency = super().save(commit=commit)
+        if commit:
+            current_image = residency.main_image.name if residency.main_image else None
+            if previous_image and previous_image != current_image:
+                previous_storage.delete(previous_image)
+            for uploaded_image in self.cleaned_data.get("gallery_images", []):
+                GalleryImage.objects.create(
+                    residency=residency,
+                    image=uploaded_image,
+                    image_type=GalleryImage.ImageType.OTHER,
+                )
+        return residency
+
+
+class GalleryUploadForm(forms.Form):
+    image_type = forms.ChoiceField(choices=GalleryImage.ImageType.choices)
+    caption = forms.CharField(max_length=150, required=False)
+    images = MultipleImageField(required=True, label="Choose images")
 
 
 class RegistrationForm(UserCreationForm):
@@ -171,9 +242,12 @@ class RoomFilterForm(forms.Form):
 
 
 class RoomForm(forms.ModelForm):
+    gallery_images = MultipleImageField(required=False, label="Gallery images")
+
     class Meta:
         model = Room
         fields = (
+            "residency",
             "room_number",
             "room_type",
             "description",
@@ -187,10 +261,62 @@ class RoomForm(forms.ModelForm):
             "status",
         )
 
+    def __init__(self, *args, admin_account, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["residency"].queryset = admin_account.residencies.all()
+        if not self.instance.pk and self.fields["residency"].queryset.count() == 1:
+            self.fields["residency"].initial = self.fields["residency"].queryset.first()
+
     def clean(self):
         cleaned = super().clean()
         total = cleaned.get("total_rooms")
         available = cleaned.get("available_rooms")
         if total is not None and available is not None and available > total:
             raise forms.ValidationError("Available rooms cannot be greater than total rooms.")
+        if self.instance.pk and total is not None and available is not None:
+            reserved = (
+                Booking.objects.filter(
+                    room=self.instance,
+                    booking_status__in=[
+                        Booking.Status.PENDING,
+                        Booking.Status.CONFIRMED,
+                    ],
+                ).aggregate(total=Sum("number_of_rooms"))["total"]
+                or 0
+            )
+            if total < reserved or available > total - reserved:
+                raise forms.ValidationError(
+                    f"Inventory must account for {reserved} rooms already reserved."
+                )
+        residency = cleaned.get("residency")
+        if (
+            self.instance.pk
+            and residency
+            and residency.pk != self.instance.residency_id
+            and Booking.objects.filter(room=self.instance).exists()
+        ):
+            self.add_error(
+                "residency",
+                "A room with booking history cannot be moved to another residency.",
+            )
         return cleaned
+
+    def save(self, commit=True):
+        previous_storage = self.instance.image.storage
+        previous_image = (
+            self.instance.image.name
+            if self.instance.pk and self.instance.image
+            else None
+        )
+        room = super().save(commit=commit)
+        if commit:
+            current_image = room.image.name if room.image else None
+            if previous_image and previous_image != current_image:
+                previous_storage.delete(previous_image)
+            for uploaded_image in self.cleaned_data.get("gallery_images", []):
+                GalleryImage.objects.create(
+                    room=room,
+                    image=uploaded_image,
+                    image_type=GalleryImage.ImageType.ROOM,
+                )
+        return room
