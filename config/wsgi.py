@@ -2,7 +2,7 @@ import os
 import sys
 from pathlib import Path
 
-PROJECT_DIR = Path(__file__).resolve().parent / "source-code"
+PROJECT_DIR = Path(__file__).resolve().parents[1] / "source-code"
 for import_dir in (
     PROJECT_DIR / "backend",
     PROJECT_DIR / "framework",

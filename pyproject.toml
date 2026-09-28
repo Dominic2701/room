@@ -14,4 +14,4 @@ dependencies = [
 package = false
 
 [tool.vercel]
-entrypoint = "wsgi:application"
+entrypoint = "config.wsgi:application"

@@ -49,7 +49,7 @@ Create rooms through the staff dashboard or Django admin. Suggested starter inve
 
 ## Deploy to Vercel
 
-Set Vercel's project root to the repository root (the directory containing root-level `pyproject.toml`, `wsgi.py`, `manage.py`, and `requirements.txt`), not `source-code`. The explicit `tool.vercel.entrypoint` setting points Vercel to the root WSGI launcher; Vercel collects Django static files from `STATIC_ROOT` for CDN delivery.
+Set Vercel's project root to the repository root (the directory containing root-level `pyproject.toml`, `config/`, `manage.py`, and `requirements.txt`), not `source-code`. The explicit `tool.vercel.entrypoint` setting points Vercel to `config/wsgi.py`; the root `config/settings.py` bridges to the project settings under `source-code/framework/config/`. Vercel collects Django static files from `STATIC_ROOT` for CDN delivery.
 
 Django needs a persistent database; Vercel's function filesystem is temporary, so the local SQLite database is not suitable for deployment. Provision a MySQL database reachable from Vercel, then add these environment variables in **Vercel → Project → Settings → Environment Variables** for the environments you deploy:
 
