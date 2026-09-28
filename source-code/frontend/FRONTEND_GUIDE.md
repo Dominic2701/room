@@ -15,30 +15,30 @@ Example for the rooms page:
 
 ```text
 /rooms/
-    booking/urls.py
+    backend/booking/urls.py
         room_list()
-            templates/rooms.html
-                static/css/style.css
-                static/js/script.js
+            frontend/templates/rooms.html
+                frontend/static/css/style.css
+                frontend/static/js/script.js
 ```
 
-The page URL is defined in [booking/urls.py](booking/urls.py).
-The data is prepared by [booking/views.py](booking/views.py).
-The visible HTML is in [templates/rooms.html](templates/rooms.html).
+The page URL is defined in [backend/booking/urls.py](../backend/booking/urls.py).
+The data is prepared by [backend/booking/views.py](../backend/booking/views.py).
+The visible HTML is in [frontend/templates/rooms.html](templates/rooms.html).
 
 ## 2. Important frontend files
 
 | File | Purpose |
 | --- | --- |
-| [templates/base.html](templates/base.html) | Shared navigation, footer, CSS, and JavaScript links |
-| [templates/home.html](templates/home.html) | Homepage and search form |
-| [templates/rooms.html](templates/rooms.html) | Filters and room results |
-| [templates/partials/room_card.html](templates/partials/room_card.html) | One reusable room card |
-| [templates/room_detail.html](templates/room_detail.html) | One room's full details |
-| [templates/booking.html](templates/booking.html) | Dates, guests, and payment method form |
-| [templates/payment_checkout.html](templates/payment_checkout.html) | Payment provider step |
-| [static/css/style.css](static/css/style.css) | All colors, spacing, layout, and responsive styles |
-| [static/js/script.js](static/js/script.js) | Mobile menu, password button, and price calculation |
+| [frontend/templates/base.html](templates/base.html) | Shared navigation, footer, CSS, and JavaScript links |
+| [frontend/templates/home.html](templates/home.html) | Homepage and search form |
+| [frontend/templates/rooms.html](templates/rooms.html) | Filters and room results |
+| [frontend/templates/partials/room_card.html](templates/partials/room_card.html) | One reusable room card |
+| [frontend/templates/room_detail.html](templates/room_detail.html) | One room's full details |
+| [frontend/templates/booking.html](templates/booking.html) | Dates, guests, and payment method form |
+| [frontend/templates/payment_checkout.html](templates/payment_checkout.html) | Payment provider step |
+| [frontend/static/css/style.css](static/css/style.css) | All colors, spacing, layout, and responsive styles |
+| [frontend/static/js/script.js](static/js/script.js) | Mobile menu, password button, and price calculation |
 
 ## 3. Django template syntax
 
@@ -59,7 +59,7 @@ Django templates mix normal HTML with special Django tags.
 <a href="{% url 'room_list' %}">View rooms</a>
 ```
 
-`{% url 'room_list' %}` generates the correct URL from `booking/urls.py`.
+`{% url 'room_list' %}` generates the correct URL from `backend/booking/urls.py`.
 
 ### Add a condition
 
@@ -109,7 +109,7 @@ This keeps the room card in one file instead of copying it into multiple pages.
 
 ## 4. How the room search works
 
-The form in [templates/home.html](templates/home.html) sends a GET request:
+The form in [frontend/templates/home.html](home.html) sends a GET request:
 
 ```html
 <form action="{% url 'room_list' %}" method="get">
@@ -126,7 +126,7 @@ The names are important:
 - `check_out` becomes the check-out date
 - `capacity` becomes the guest count
 
-Django reads these values in `room_list()` inside [booking/views.py](booking/views.py).
+Django reads these values in `room_list()` inside [backend/booking/views.py](../backend/booking/views.py).
 
 ## 5. How CSS works
 
@@ -170,7 +170,7 @@ For example, a three-column room grid becomes one column.
 
 ## 6. How JavaScript works
 
-[static/js/script.js](static/js/script.js) runs after the page loads.
+[frontend/static/js/script.js](static/js/script.js) runs after the page loads.
 
 The booking form has a price attribute:
 
@@ -198,7 +198,7 @@ Edit the text inside the HTML tag:
 
 ### Change a button color
 
-Find `.button` or `.card-button` in `static/css/style.css`:
+Find `.button` or `.card-button` in `frontend/static/css/style.css`:
 
 ```css
 .card-button {
@@ -208,7 +208,7 @@ Find `.button` or `.card-button` in `static/css/style.css`:
 
 ### Add a room-card label
 
-Edit `templates/partials/room_card.html`:
+Edit `frontend/templates/partials/room_card.html`:
 
 ```html
 <span class="room-label">Available now</span>
@@ -226,12 +226,12 @@ Then add its appearance to the CSS:
 
 ## 8. Safe workflow after a frontend change
 
-Run these commands from the project folder:
+Run these commands from `source-code`:
 
 ```powershell
-python manage.py check
-python manage.py test booking.tests
-python manage.py runserver
+python framework\manage.py check
+python framework\manage.py test booking.tests
+python framework\manage.py runserver
 ```
 
 Then open:
@@ -258,20 +258,20 @@ If a template shows an `Invalid block tag` error, check that every opening Djang
 
 | File | Beginner explanation |
 | --- | --- |
-| [booking/models.py](booking/models.py) | Defines database tables such as rooms, bookings, users, and payments |
-| [booking/forms.py](booking/forms.py) | Defines forms and validates user input |
-| [booking/views.py](booking/views.py) | Contains the Python functions that respond to page requests |
-| [booking/urls.py](booking/urls.py) | Connects a browser URL to a view function |
-| [booking/admin.py](booking/admin.py) | Controls how models appear in Django admin |
-| [booking/tests.py](booking/tests.py) | Checks that important workflows still work |
-| [config/settings.py](config/settings.py) | Project settings, database, templates, and static files |
+| [backend/booking/models.py](../backend/booking/models.py) | Defines database tables such as rooms, bookings, users, and payments |
+| [backend/booking/forms.py](../backend/booking/forms.py) | Defines forms and validates user input |
+| [backend/booking/views.py](../backend/booking/views.py) | Contains the Python functions that respond to page requests |
+| [backend/booking/urls.py](../backend/booking/urls.py) | Connects a browser URL to a view function |
+| [backend/booking/admin.py](../backend/booking/admin.py) | Controls how models appear in Django admin |
+| [backend/booking/tests.py](../backend/booking/tests.py) | Checks that important workflows still work |
+| [framework/config/settings.py](../framework/config/settings.py) | Project settings, database, templates, and static files |
 
 ### Example: opening a room page
 
 1. The browser requests `/rooms/3/`.
-2. [booking/urls.py](booking/urls.py) sends that request to `room_detail`.
+2. [backend/booking/urls.py](../backend/booking/urls.py) sends that request to `room_detail`.
 3. `room_detail` finds room number 3 using the Django ORM.
-4. The view sends the room to [templates/room_detail.html](templates/room_detail.html).
+4. The view sends the room to [frontend/templates/room_detail.html](room_detail.html).
 5. The template displays the room using HTML and CSS.
 
 ```python
@@ -282,7 +282,7 @@ def room_detail(request, pk):
 
 ### Example: making a booking
 
-1. The user submits [templates/booking.html](templates/booking.html).
+1. The user submits [frontend/templates/booking.html](booking.html).
 2. `book_room` creates a `Booking` object after form validation.
 3. Django saves the booking in the database.
 4. A `Payment` object is created with a pending status.
