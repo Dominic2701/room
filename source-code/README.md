@@ -47,6 +47,21 @@ Each admin account can manage one or more residencies. Use **Residencies** in th
 
 Create rooms through the staff dashboard or Django admin. Suggested starter inventory: 101 Single (INR 1500), 102 Double (INR 2000), 201 Deluxe (INR 2500), 202 Deluxe (INR 2800), 301 Suite (INR 5000), and 302 Family (INR 4000).
 
+## Deploy to Vercel
+
+Set Vercel's project root to the repository root (the directory containing the root-level `manage.py` and `requirements.txt`), not `source-code`. Vercel detects Django from `manage.py`, runs the app as a function, and collects files from `STATIC_ROOT` for CDN delivery.
+
+Django needs a persistent database; Vercel's function filesystem is temporary, so the local SQLite database is not suitable for deployment. Provision a MySQL database reachable from Vercel, then add these environment variables in **Vercel → Project → Settings → Environment Variables** for the environments you deploy:
+
+- `DJANGO_SECRET_KEY`: a long, random secret value
+- `DJANGO_DEBUG`: `False`
+- `DJANGO_ALLOWED_HOSTS`: the Vercel production hostname (and any custom domains), comma-separated
+- `CSRF_TRUSTED_ORIGINS`: the matching HTTPS origins, comma-separated (for example, `https://your-project.vercel.app`)
+- `DB_ENGINE`: `mysql`
+- `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, and `DB_PORT`: credentials for the persistent MySQL database
+
+Redeploy after adding the variables. Apply database migrations against that database with `python framework\manage.py migrate` from `source-code`, using the same database environment values. Vercel's temporary filesystem also does not persist uploaded `media/` files; use persistent object storage before relying on uploads in production.
+
 ## Tests
 
 ```powershell

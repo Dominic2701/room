@@ -2,17 +2,39 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
+from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 load_dotenv(BASE_DIR / ".env")
 
-SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-only-change-me")
-DEBUG = os.getenv("DJANGO_DEBUG", "True").lower() == "true"
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
+if not SECRET_KEY:
+    if os.getenv("VERCEL"):
+        raise ImproperlyConfigured(
+            "Set DJANGO_SECRET_KEY in the Vercel project environment variables."
+        )
+    SECRET_KEY = "dev-only-change-me"
+
+DEBUG = (
+    os.getenv("DJANGO_DEBUG", "False" if os.getenv("VERCEL") else "True").lower()
+    == "true"
+)
+VERCEL_URL = os.getenv("VERCEL_URL", "").strip()
+default_allowed_hosts = "127.0.0.1,localhost"
+if VERCEL_URL:
+    default_allowed_hosts = f"{default_allowed_hosts},{VERCEL_URL}"
 ALLOWED_HOSTS = [
     host.strip()
-    for host in os.getenv("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
+    for host in os.getenv("DJANGO_ALLOWED_HOSTS", default_allowed_hosts).split(",")
     if host.strip()
 ]
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",")
+    if origin.strip()
+]
+if VERCEL_URL:
+    CSRF_TRUSTED_ORIGINS.append(f"https://{VERCEL_URL}")
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -64,6 +86,11 @@ if os.getenv("DB_ENGINE", "sqlite").lower() == "mysql":
         }
     }
 else:
+    if os.getenv("VERCEL"):
+        raise ImproperlyConfigured(
+            "Vercel functions cannot persist SQLite data. Configure DB_ENGINE=mysql "
+            "and connect a persistent MySQL database."
+        )
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
@@ -81,11 +108,15 @@ TIME_ZONE = "Asia/Kolkata"
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
 STATICFILES_DIRS = [BASE_DIR / "frontend" / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
-MEDIA_URL = "media/"
+MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+if not DEBUG:
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "home"
