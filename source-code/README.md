@@ -55,7 +55,7 @@ Django needs a persistent database; Vercel's function filesystem is temporary, s
 
 - `DJANGO_SECRET_KEY`: a long, random secret value
 - `DJANGO_DEBUG`: `False` (debug mode is also forcibly disabled on Vercel)
-- `DJANGO_ALLOWED_HOSTS`: any custom domains, comma-separated; Vercel deployment, branch, and project production domains are added automatically from its system environment variables
+- `DJANGO_ALLOWED_HOSTS`: any custom domains, comma-separated; Vercel deployment, branch, and project production domains are added automatically, and versioned `*.vercel.app` deployment URLs are accepted
 - `CSRF_TRUSTED_ORIGINS`: any additional HTTPS origins; Vercel domains are added automatically
 - `DB_ENGINE`: `mysql`
 - `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, and `DB_PORT`: credentials for the persistent MySQL database

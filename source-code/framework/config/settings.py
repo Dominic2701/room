@@ -24,6 +24,7 @@ VERCEL_HOSTS = [
     )
     if os.getenv(name, "").strip()
 ]
+VERCEL_HOSTS.append(".vercel.app")
 configured_allowed_hosts = [
     host.strip()
     for host in os.getenv(
