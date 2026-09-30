@@ -54,9 +54,9 @@ Vercel supports either the repository root or `source-code` as the project root.
 Django needs a persistent database; Vercel's function filesystem is temporary, so the local SQLite database is not suitable for deployment. Provision a MySQL database reachable from Vercel, then add these environment variables in **Vercel → Project → Settings → Environment Variables** for the environments you deploy:
 
 - `DJANGO_SECRET_KEY`: a long, random secret value
-- `DJANGO_DEBUG`: `False`
-- `DJANGO_ALLOWED_HOSTS`: the Vercel production hostname (and any custom domains), comma-separated
-- `CSRF_TRUSTED_ORIGINS`: the matching HTTPS origins, comma-separated (for example, `https://your-project.vercel.app`)
+- `DJANGO_DEBUG`: `False` (debug mode is also forcibly disabled on Vercel)
+- `DJANGO_ALLOWED_HOSTS`: any custom domains, comma-separated; Vercel deployment, branch, and project production domains are added automatically from its system environment variables
+- `CSRF_TRUSTED_ORIGINS`: any additional HTTPS origins; Vercel domains are added automatically
 - `DB_ENGINE`: `mysql`
 - `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, and `DB_PORT`: credentials for the persistent MySQL database
 

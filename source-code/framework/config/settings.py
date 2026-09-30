@@ -10,26 +10,39 @@ SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
 if not SECRET_KEY:
     SECRET_KEY = "dev-only-change-me"
 
+IS_VERCEL = bool(os.getenv("VERCEL"))
 DEBUG = (
-    os.getenv("DJANGO_DEBUG", "False" if os.getenv("VERCEL") else "True").lower()
-    == "true"
+    not IS_VERCEL
+    and os.getenv("DJANGO_DEBUG", "True").lower() == "true"
 )
-VERCEL_URL = os.getenv("VERCEL_URL", "").strip()
-default_allowed_hosts = "127.0.0.1,localhost"
-if VERCEL_URL:
-    default_allowed_hosts = f"{default_allowed_hosts},{VERCEL_URL}"
-ALLOWED_HOSTS = [
+VERCEL_HOSTS = [
+    os.getenv(name, "").strip()
+    for name in (
+        "VERCEL_URL",
+        "VERCEL_BRANCH_URL",
+        "VERCEL_PROJECT_PRODUCTION_URL",
+    )
+    if os.getenv(name, "").strip()
+]
+configured_allowed_hosts = [
     host.strip()
-    for host in os.getenv("DJANGO_ALLOWED_HOSTS", default_allowed_hosts).split(",")
+    for host in os.getenv(
+        "DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost"
+    ).split(",")
     if host.strip()
 ]
+ALLOWED_HOSTS = list(dict.fromkeys(configured_allowed_hosts + VERCEL_HOSTS))
 CSRF_TRUSTED_ORIGINS = [
     origin.strip()
     for origin in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",")
     if origin.strip()
 ]
-if VERCEL_URL:
-    CSRF_TRUSTED_ORIGINS.append(f"https://{VERCEL_URL}")
+CSRF_TRUSTED_ORIGINS = list(
+    dict.fromkeys(
+        CSRF_TRUSTED_ORIGINS
+        + [f"https://{host}" for host in VERCEL_HOSTS]
+    )
+)
 
 INSTALLED_APPS = [
     "django.contrib.admin",
