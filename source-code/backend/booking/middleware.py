@@ -1,8 +1,13 @@
+import logging
 import ipaddress
 import os
 from urllib.parse import urlparse
 
+from django.db.utils import OperationalError
 from django.http import HttpResponse
+
+
+logger = logging.getLogger(__name__)
 
 
 def _is_local_database_host(host):
@@ -46,7 +51,13 @@ class VercelConfigurationMiddleware:
             else:
                 missing.extend(
                     name
-                    for name in ("DB_NAME", "DB_USER", "DB_PASSWORD", "DB_HOST")
+                    for name in (
+                        "DB_NAME",
+                        "DB_USER",
+                        "DB_PASSWORD",
+                        "DB_HOST",
+                        "DB_PORT",
+                    )
                     if not os.getenv(name)
                 )
                 db_host = os.getenv("DB_HOST", "").strip()
@@ -54,6 +65,16 @@ class VercelConfigurationMiddleware:
                     missing.append(
                         "DB_HOST must be the external database hostname, "
                         "not a loopback address"
+                    )
+                db_port = os.getenv("DB_PORT", "").strip()
+                if db_port and (
+                    not db_port.isdecimal()
+                    or len(db_port) > 5
+                    or not 1 <= int(db_port) <= 65535
+                ):
+                    missing.append(
+                        "DB_PORT must be the valid port from the database "
+                        "provider's connection details"
                     )
 
             if missing:
@@ -65,4 +86,17 @@ class VercelConfigurationMiddleware:
                     content_type="text/plain; charset=utf-8",
                 )
 
-        return self.get_response(request)
+        try:
+            return self.get_response(request)
+        except OperationalError:
+            if not os.getenv("VERCEL"):
+                raise
+            logger.exception("Database connection failed while handling request")
+            return HttpResponse(
+                "The application could not reach its database. Verify DB_HOST "
+                "and DB_PORT against the provider's connection details, ensure "
+                "the database is running, and allow connections from the Vercel "
+                "deployment.",
+                status=503,
+                content_type="text/plain; charset=utf-8",
+            )

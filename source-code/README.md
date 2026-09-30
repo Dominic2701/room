@@ -70,6 +70,7 @@ Notes:
 - Hosted MySQL also works instead of Neon: set `DATABASE_URL=mysql://user:password@host:port/dbname` and `DB_SSL=True`. The older `DB_ENGINE=mysql` + `DB_*` variables still work; `DB_HOST` must never be `127.0.0.1` or `localhost`.
 - Until a database is configured, the site shows a 503 message listing what is missing.
 - Locally nothing changes: without these variables the app uses SQLite (or your local MySQL) and the `media/` folder.
+For Aiven MySQL, use the exact `DB_HOST` and `DB_PORT` from its connection details; the service-specific port may not be `3306`. Ensure the service is running, public access is enabled if required, and its network rules permit connections from Vercel. A connection timeout indicates an unreachable host/port or blocked network access.
 
 ## Tests
 

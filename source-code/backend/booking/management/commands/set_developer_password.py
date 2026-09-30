@@ -3,7 +3,7 @@ from pathlib import Path
 
 from django.conf import settings
 from django.contrib.auth.hashers import check_password, make_password
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from dotenv import dotenv_values
 
 
@@ -37,7 +37,11 @@ class Command(BaseCommand):
                 continue
             break
 
-        env_path = Path(settings.BASE_DIR) / ".env"
+        project_root = Path(settings.BASE_DIR).resolve()
+        env_path = project_root / ".env"
+        env_path.parent.mkdir(parents=True, exist_ok=True)
+        env_path.touch(exist_ok=True)
+
         lines = env_path.read_text(encoding="utf-8").splitlines() if env_path.exists() else []
         password_hash = make_password(password)
         setting = f'DEVELOPER_PASSWORD_HASH="{password_hash}"'

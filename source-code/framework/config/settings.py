@@ -148,7 +148,7 @@ elif os.getenv("DB_ENGINE", "sqlite").lower() == "mysql":
             "USER": os.getenv("DB_USER", "root"),
             "PASSWORD": os.getenv("DB_PASSWORD", ""),
             "HOST": os.getenv("DB_HOST", "127.0.0.1"),
-            "PORT": os.getenv("DB_PORT", "3306"),
+            "PORT": os.getenv("DB_PORT", "3306" if not IS_VERCEL else ""),
             "OPTIONS": _mysql_options(DB_SSL),
         }
     }
@@ -199,8 +199,8 @@ LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "home"
 LOGOUT_REDIRECT_URL = "home"
 DEFAULT_FROM_EMAIL = os.getenv("EMAIL_USER", "dominicericson2701@gmail.com")
-DEVELOPER_EMAIL = os.getenv("DEVELOPER_EMAIL", "dominicericson2701@gmail.com").lower()
-DEVELOPER_PASSWORD_HASH = os.getenv("DEVELOPER_PASSWORD_HASH", "")
+DEVELOPER_EMAIL = os.getenv("DEVELOPER_EMAIL", "dominicericson2701@gmail.com").strip().lower()
+DEVELOPER_PASSWORD_HASH = os.getenv("DEVELOPER_PASSWORD_HASH", "").strip()
 EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
 EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
 EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
