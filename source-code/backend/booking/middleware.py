@@ -1,6 +1,16 @@
+import ipaddress
 import os
 
 from django.http import HttpResponse
+
+
+def _is_local_database_host(host):
+    if host.lower() == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
 
 
 class VercelConfigurationMiddleware:
@@ -22,6 +32,12 @@ class VercelConfigurationMiddleware:
                     for name in ("DB_NAME", "DB_USER", "DB_PASSWORD", "DB_HOST")
                     if not os.getenv(name)
                 )
+                db_host = os.getenv("DB_HOST", "").strip()
+                if db_host and _is_local_database_host(db_host):
+                    missing.append(
+                        "DB_HOST must be the external database hostname, "
+                        "not a loopback address"
+                    )
 
             if missing:
                 return HttpResponse(

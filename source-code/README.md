@@ -60,6 +60,8 @@ Django needs a persistent database; Vercel's function filesystem is temporary, s
 - `DB_ENGINE`: `mysql`
 - `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, and `DB_PORT`: credentials for the persistent MySQL database
 
+`DB_HOST` must be the database provider's reachable hostname, not `127.0.0.1`, `localhost`, or another loopback address; those addresses point back to the Vercel function, where no MySQL server is running.
+
 Redeploy after adding the variables. Apply database migrations against that database with `python framework\manage.py migrate` from `source-code`, using the same database environment values. Vercel can now complete its build without runtime credentials, but the app will report which required variables are missing on requests until they are configured. Vercel's temporary filesystem also does not persist uploaded `media/` files; use persistent object storage before relying on uploads in production.
 
 ## Tests
