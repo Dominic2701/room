@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from urllib.parse import parse_qs, unquote, urlparse
 
 from dotenv import load_dotenv
 
@@ -83,7 +84,63 @@ TEMPLATES = [
 ]
 WSGI_APPLICATION = "config.wsgi.application"
 
-if os.getenv("DB_ENGINE", "sqlite").lower() == "mysql":
+DATABASE_URL = (
+    os.getenv("DATABASE_URL")
+    or os.getenv("POSTGRES_URL")
+    or os.getenv("MYSQL_URL")
+    or ""
+).strip()
+DB_SSL = os.getenv("DB_SSL", "").lower() == "true"
+
+
+def _mysql_options(use_ssl):
+    options = {"charset": "utf8mb4"}
+    if use_ssl:
+        # Hosted MySQL (TiDB Cloud, Aiven, etc.) requires TLS; PyMySQL verifies
+        # the server certificate against the system CA bundle.
+        options["ssl"] = {"check_hostname": True}
+    return options
+
+
+if DATABASE_URL:
+    # One connection string, e.g. from a Vercel Marketplace database (Neon Postgres)
+    # or a hosted MySQL provider: postgres://... or mysql://...
+    _url = urlparse(DATABASE_URL)
+    _scheme = _url.scheme.split("+")[0]
+    _query = parse_qs(_url.query)
+    if _scheme in ("postgres", "postgresql"):
+        DATABASES = {
+            "default": {
+                "ENGINE": "django.db.backends.postgresql",
+                "NAME": unquote(_url.path.lstrip("/")),
+                "USER": unquote(_url.username or ""),
+                "PASSWORD": unquote(_url.password or ""),
+                "HOST": _url.hostname,
+                "PORT": _url.port or 5432,
+                "OPTIONS": {"sslmode": _query.get("sslmode", ["require"])[0]},
+                "CONN_MAX_AGE": 0,
+            }
+        }
+    elif _scheme == "mysql":
+        _ssl = DB_SSL or any(
+            key in _query for key in ("ssl", "ssl-mode", "sslmode", "ssl_mode")
+        )
+        DATABASES = {
+            "default": {
+                "ENGINE": "django.db.backends.mysql",
+                "NAME": unquote(_url.path.lstrip("/")),
+                "USER": unquote(_url.username or ""),
+                "PASSWORD": unquote(_url.password or ""),
+                "HOST": _url.hostname,
+                "PORT": _url.port or 3306,
+                "OPTIONS": _mysql_options(_ssl),
+            }
+        }
+    else:
+        raise ValueError(
+            f"Unsupported DATABASE_URL scheme '{_url.scheme}'. Use postgres:// or mysql://."
+        )
+elif os.getenv("DB_ENGINE", "sqlite").lower() == "mysql":
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.mysql",
@@ -92,7 +149,7 @@ if os.getenv("DB_ENGINE", "sqlite").lower() == "mysql":
             "PASSWORD": os.getenv("DB_PASSWORD", ""),
             "HOST": os.getenv("DB_HOST", "127.0.0.1"),
             "PORT": os.getenv("DB_PORT", "3306"),
-            "OPTIONS": {"charset": "utf8mb4"},
+            "OPTIONS": _mysql_options(DB_SSL),
         }
     }
 else:

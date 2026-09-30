@@ -49,20 +49,19 @@ Create rooms through the staff dashboard or Django admin. Suggested starter inve
 
 ## Deploy to Vercel
 
-Vercel supports either the repository root or `source-code` as the project root. Both locations now include a `pyproject.toml`, `requirements.txt`, and `config/wsgi.py` entry point, so Django is discoverable with either setting. If deployment logs report a missing `/var/task/config/wsgi.py`, confirm that the latest commit has deployed and set Vercel's Root Directory to either `.` (repository root) or `source-code`. Vercel collects Django static files from `STATIC_ROOT` for CDN delivery.
+1. **Import the repo** in Vercel and leave **Root Directory** as the repository root (`.`). Vercel detects Django from `manage.py`; the entrypoint is `config.wsgi:application` (set in `pyproject.toml`). Framework preset: Django (or "Other"). Leave Build/Output commands empty.
+2. **Create a hosted database.** Vercel's filesystem is temporary, so SQLite and `localhost` MySQL cannot work there. Easiest: Vercel → **Storage** (Marketplace) → **Neon Postgres** → connect it to this project. That sets `DATABASE_URL` automatically. Hosted MySQL (TiDB Cloud, Aiven) also works: set `DATABASE_URL=mysql://user:password@host:port/dbname` and `DB_SSL=True`.
+3. **Add environment variables** (Project → Settings → Environment Variables):
+   - `DJANGO_SECRET_KEY`: a long random value
+   - `DATABASE_URL`: set by the Neon integration, or your own connection string
+   - Optional: `DJANGO_ALLOWED_HOSTS` / `CSRF_TRUSTED_ORIGINS` for a custom domain (Vercel domains are added automatically)
+   - Optional email settings: `EMAIL_USER`, `EMAIL_PASSWORD`, `DEVELOPER_EMAIL`, `DEVELOPER_PASSWORD_HASH`
+4. **Redeploy.** The build runs `build.py`, which applies migrations to the hosted database, and Vercel collects static files to its CDN automatically.
+5. **Create the first admin** from your computer against the same database: put the same `DATABASE_URL` in a local `.env` next to `framework/`, then run `python framework\manage.py create_admin_account` (or `createsuperuser`).
 
-Django needs a persistent database; Vercel's function filesystem is temporary, so the local SQLite database is not suitable for deployment. Provision a MySQL database reachable from Vercel, then add these environment variables in **Vercel → Project → Settings → Environment Variables** for the environments you deploy:
+The older `DB_ENGINE=mysql` + `DB_NAME`/`DB_USER`/`DB_PASSWORD`/`DB_HOST`/`DB_PORT` variables still work instead of `DATABASE_URL`; `DB_HOST` must be the provider's hostname, never `127.0.0.1` or `localhost`. Until a database is configured the site shows a 503 message listing what is missing.
 
-- `DJANGO_SECRET_KEY`: a long, random secret value
-- `DJANGO_DEBUG`: `False` (debug mode is also forcibly disabled on Vercel)
-- `DJANGO_ALLOWED_HOSTS`: any custom domains, comma-separated; Vercel deployment, branch, and project production domains are added automatically, and versioned `*.vercel.app` deployment URLs are accepted
-- `CSRF_TRUSTED_ORIGINS`: any additional HTTPS origins; Vercel domains are added automatically
-- `DB_ENGINE`: `mysql`
-- `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, and `DB_PORT`: credentials for the persistent MySQL database
-
-`DB_HOST` must be the database provider's reachable hostname, not `127.0.0.1`, `localhost`, or another loopback address; those addresses point back to the Vercel function, where no MySQL server is running.
-
-Redeploy after adding the variables. Apply database migrations against that database with `python framework\manage.py migrate` from `source-code`, using the same database environment values. Vercel can now complete its build without runtime credentials, but the app will report which required variables are missing on requests until they are configured. Vercel's temporary filesystem also does not persist uploaded `media/` files; use persistent object storage before relying on uploads in production.
+**Uploaded images:** files saved to `media/` do not persist on Vercel and are not served when `DEBUG` is off. Use object storage (for example Vercel Blob, Cloudinary or S3 via `django-storages`) before relying on image uploads in production.
 
 ## Tests
 

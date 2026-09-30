@@ -1,5 +1,6 @@
 import ipaddress
 import os
+from urllib.parse import urlparse
 
 from django.http import HttpResponse
 
@@ -24,8 +25,24 @@ class VercelConfigurationMiddleware:
                 for name in ("DJANGO_SECRET_KEY",)
                 if not os.getenv(name)
             ]
-            if os.getenv("DB_ENGINE", "").lower() != "mysql":
-                missing.append("DB_ENGINE=mysql (persistent database required)")
+            database_url = (
+                os.getenv("DATABASE_URL")
+                or os.getenv("POSTGRES_URL")
+                or os.getenv("MYSQL_URL")
+                or ""
+            ).strip()
+            if database_url:
+                db_host = urlparse(database_url).hostname or ""
+                if not db_host or _is_local_database_host(db_host):
+                    missing.append(
+                        "DATABASE_URL must point to an external database host, "
+                        "not a loopback address"
+                    )
+            elif os.getenv("DB_ENGINE", "").lower() != "mysql":
+                missing.append(
+                    "DATABASE_URL (or DB_ENGINE=mysql with DB_* settings) "
+                    "for a persistent database"
+                )
             else:
                 missing.extend(
                     name
