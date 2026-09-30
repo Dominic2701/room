@@ -175,6 +175,21 @@ STATICFILES_DIRS = [BASE_DIR / "frontend" / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+# Uploaded images: saved to Vercel Blob when a Blob store is connected (it sets
+# BLOB_READ_WRITE_TOKEN); otherwise to the local media/ folder.
+USE_VERCEL_BLOB = bool(os.getenv("BLOB_READ_WRITE_TOKEN"))
+STORAGES = {
+    "default": {
+        "BACKEND": (
+            "booking.storage.VercelBlobStorage"
+            if USE_VERCEL_BLOB
+            else "django.core.files.storage.FileSystemStorage"
+        ),
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
 if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True

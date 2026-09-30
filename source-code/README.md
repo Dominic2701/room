@@ -47,21 +47,29 @@ Each admin account can manage one or more residencies. Use **Residencies** in th
 
 Create rooms through the staff dashboard or Django admin. Suggested starter inventory: 101 Single (INR 1500), 102 Double (INR 2000), 201 Deluxe (INR 2500), 202 Deluxe (INR 2800), 301 Suite (INR 5000), and 302 Family (INR 4000).
 
-## Deploy to Vercel
+## Deploy to Vercel (free)
 
-1. **Import the repo** in Vercel and leave **Root Directory** as the repository root (`.`). Vercel detects Django from `manage.py`; the entrypoint is `config.wsgi:application` (set in `pyproject.toml`). Framework preset: Django (or "Other"). Leave Build/Output commands empty.
-2. **Create a hosted database.** Vercel's filesystem is temporary, so SQLite and `localhost` MySQL cannot work there. Easiest: Vercel → **Storage** (Marketplace) → **Neon Postgres** → connect it to this project. That sets `DATABASE_URL` automatically. Hosted MySQL (TiDB Cloud, Aiven) also works: set `DATABASE_URL=mysql://user:password@host:port/dbname` and `DB_SSL=True`.
-3. **Add environment variables** (Project → Settings → Environment Variables):
-   - `DJANGO_SECRET_KEY`: a long random value
-   - `DATABASE_URL`: set by the Neon integration, or your own connection string
-   - Optional: `DJANGO_ALLOWED_HOSTS` / `CSRF_TRUSTED_ORIGINS` for a custom domain (Vercel domains are added automatically)
-   - Optional email settings: `EMAIL_USER`, `EMAIL_PASSWORD`, `DEVELOPER_EMAIL`, `DEVELOPER_PASSWORD_HASH`
-4. **Redeploy.** The build runs `build.py`, which applies migrations to the hosted database, and Vercel collects static files to its CDN automatically.
-5. **Create the first admin** from your computer against the same database: put the same `DATABASE_URL` in a local `.env` next to `framework/`, then run `python framework\manage.py create_admin_account` (or `createsuperuser`).
+Everything below uses free plans with hard limits, so nothing is charged. When a free limit is reached the service stops or pauses until the next month instead of billing you.
 
-The older `DB_ENGINE=mysql` + `DB_NAME`/`DB_USER`/`DB_PASSWORD`/`DB_HOST`/`DB_PORT` variables still work instead of `DATABASE_URL`; `DB_HOST` must be the provider's hostname, never `127.0.0.1` or `localhost`. Until a database is configured the site shows a 503 message listing what is missing.
+| Piece | Free service | Free allowance |
+| --- | --- | --- |
+| Website hosting | Vercel Hobby | Personal, non-commercial use only |
+| Database | Neon Postgres (via Vercel Storage) | 0.5 GB per project |
+| Uploaded images | Vercel Blob | 1 GB storage, 2,000 uploads/month, 10 GB downloads/month |
 
-**Uploaded images:** files saved to `media/` do not persist on Vercel and are not served when `DEBUG` is off. Use object storage (for example Vercel Blob, Cloudinary or S3 via `django-storages`) before relying on image uploads in production.
+1. **Import the repo** in Vercel (Hobby plan). Leave **Root Directory** as the repository root (`.`) and leave the Build/Output commands empty. Vercel detects Django from `manage.py`; the entrypoint `config.wsgi:application` is set in `pyproject.toml`.
+2. **Add the database:** Project → **Storage** → **Create Database** → **Neon** (free plan) → connect it to the project. This sets `DATABASE_URL`.
+3. **Add image storage:** Project → **Storage** → **Create** → **Blob** → connect it to the project. This sets `BLOB_READ_WRITE_TOKEN`, and uploads go to Blob automatically.
+4. **Add one variable** under Settings → Environment Variables: `DJANGO_SECRET_KEY` = a long random value. Optional: `DJANGO_ALLOWED_HOSTS` / `CSRF_TRUSTED_ORIGINS` for a custom domain; `EMAIL_USER`, `EMAIL_PASSWORD`, `DEVELOPER_EMAIL`, `DEVELOPER_PASSWORD_HASH` for email and admin registration.
+5. **Redeploy.** The build runs `build.py`, which applies migrations to the database; Vercel collects static files to its CDN.
+6. **Create the first admin** from your computer: put the same `DATABASE_URL` in `source-code/.env`, then run `python framework\manage.py create_admin_account` (or `createsuperuser`) from `source-code`.
+
+Notes:
+- Preview deployments use the same database unless you give them a separate one, and their migrations run against it.
+- Images uploaded before Blob was connected (in your local `media/` folder) are not copied; re-upload them through the dashboard.
+- Hosted MySQL also works instead of Neon: set `DATABASE_URL=mysql://user:password@host:port/dbname` and `DB_SSL=True`. The older `DB_ENGINE=mysql` + `DB_*` variables still work; `DB_HOST` must never be `127.0.0.1` or `localhost`.
+- Until a database is configured, the site shows a 503 message listing what is missing.
+- Locally nothing changes: without these variables the app uses SQLite (or your local MySQL) and the `media/` folder.
 
 ## Tests
 
